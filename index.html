@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify Quiz Card Generator - Create Printable Music Quiz Cards</title>
+  <meta name="description" content="Generate printable quiz cards from any Spotify playlist. Perfect for music trivia nights, parties, and games. Features QR codes, multiple color schemes, and duplex printing support.">
+  <meta name="keywords" content="spotify, quiz, cards, music trivia, printable, QR code, party game, music quiz">
+  <meta name="author" content="Spotify Quiz Cards">
+
+  <!-- Open Graph / Social Media -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Spotify Quiz Card Generator">
+  <meta property="og:description" content="Generate printable quiz cards from any Spotify playlist. Perfect for music trivia nights!">
+  <meta property="og:image" content="https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/168px-Spotify_logo_without_text.svg.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Spotify Quiz Card Generator">
+  <meta name="twitter:description" content="Generate printable quiz cards from any Spotify playlist">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#2e7d32">
+
+  <!-- QR Code Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #f0fff4 0%, #e8f5e9 50%, #f1f8f4 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    /* Form Styles */
+    .form-container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .form-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .form-header h1 {
+      color: #2e7d32;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .form-header p {
+      color: #558b59;
+      font-size: 16px;
+    }
+
+    .step-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 30px;
+    }
+
+    @media (max-width: 900px) {
+      .step-cards {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .step-cards {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .step-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+      border: 2px dashed #a5d6a7;
+      border-radius: 16px;
+      padding: 24px;
+      transition: all 0.3s ease;
+    }
+
+    .step-card:hover {
+      background: rgba(255, 255, 255, 0.9);
+      border-color: #2e7d32;
+      transform: translateY(-2px);
+    }
+
+    .step-number {
+      font-size: 48px;
+      font-weight: 300;
+      color: #2e7d32;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+
+    .step-title {
+      font-size: 14px;
+      color: #2e7d32;
+      font-weight: 500;
+      line-height: 1.4;
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: #2e7d32;
+      font-size: 13px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #c8e6c9;
+      border-radius: 10px;
+      font-size: 14px;
+      background: rgba(255,255,255,0.8);
+      transition: all 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #2e7d32;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(46,125,50,0.1);
+    }
+
+    .form-group input::placeholder {
+      color: #a5d6a7;
+    }
+
+    .form-group small {
+      display: block;
+      margin-top: 6px;
+      color: #81c784;
+      font-size: 11px;
+    }
+
+    .form-group small a {
+      color: #2e7d32;
+      text-decoration: none;
+    }
+
+    .form-group small a:hover {
+      text-decoration: underline;
+    }
+
+    .submit-container {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .submit-btn {
+      padding: 16px 48px;
+      background: #2e7d32;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(46,125,50,0.3);
+    }
+
+    .submit-btn:hover {
+      background: #1b5e20;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(46,125,50,0.4);
+    }
+
+    .submit-btn:disabled {
+      background: #a5d6a7;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .error-message {
+      background: #ffebee;
+      color: #c62828;
+      padding: 14px 18px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      display: none;
+      text-align: center;
+      border: 1px solid #ffcdd2;
+    }
+
+    .privacy-notice {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 12px;
+      color: #81c784;
+    }
+
+    /* Color Scheme Picker */
+    .color-scheme-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .color-scheme-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border: 2px solid #c8e6c9;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: rgba(255,255,255,0.5);
+    }
+
+    .color-scheme-option:hover {
+      border-color: #81c784;
+      background: rgba(255,255,255,0.8);
+    }
+
+    .color-scheme-option.selected {
+      border-color: #2e7d32;
+      background: rgba(255,255,255,0.9);
+    }
+
+    .color-scheme-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: #2e7d32;
+      flex: 1;
+    }
+
+    .color-scheme-preview {
+      display: flex;
+      gap: 3px;
+    }
+
+    .color-scheme-preview .color-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    /* Playlist Preview */
+    .playlist-preview {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(46,125,50,0.1);
+      border: 1px solid #a5d6a7;
+    }
+
+    .playlist-preview-loading {
+      color: #558b59;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .playlist-preview-content {
+      text-align: center;
+    }
+
+    .playlist-preview-name {
+      font-weight: 600;
+      color: #2e7d32;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .playlist-preview-info {
+      color: #558b59;
+      font-size: 12px;
+    }
+
+    .playlist-preview-error {
+      color: #c62828;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+
+    /* Print Styles */
+    .print-container {
+      display: none;
+    }
+
+    .page {
+      width: 210mm;
+      height: 297mm;
+      padding: 15mm;
+      background: white;
+      page-break-after: always;
+    }
+
+    .page:last-child {
+      page-break-after: auto;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 60mm);
+      grid-template-rows: repeat(4, 60mm);
+      gap: 8mm;
+      height: 100%;
+      justify-content: center;
+      align-content: center;
+      overflow: visible;
+    }
+
+    .card {
+      width: 60mm;
+      height: 60mm;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3mm;
+      overflow: visible;
+      position: relative;
+    }
+
+
+    /* Cutting marks - positioned around each card */
+    .cut-mark {
+      position: absolute;
+      background: #000;
+    }
+
+    /* Horizontal marks */
+    .cut-mark-h {
+      width: 3mm;
+      height: 0.3mm;
+    }
+
+    /* Vertical marks */
+    .cut-mark-v {
+      width: 0.3mm;
+      height: 3mm;
+    }
+
+    /* Top-left */
+    .cut-tl-h { top: 0; left: -3.5mm; }
+    .cut-tl-v { top: -3.5mm; left: 0; }
+
+    /* Top-right */
+    .cut-tr-h { top: 0; right: -3.5mm; }
+    .cut-tr-v { top: -3.5mm; right: 0; }
+
+    /* Bottom-left */
+    .cut-bl-h { bottom: 0; left: -3.5mm; }
+    .cut-bl-v { bottom: -3.5mm; left: 0; }
+
+    /* Bottom-right */
+    .cut-br-h { bottom: 0; right: -3.5mm; }
+    .cut-br-v { bottom: -3.5mm; right: 0; }
+
+    /* Front Card (QR Code) */
+    .card-front {
+      background: white;
+    }
+
+    .card-front .qr-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-front .qr-container canvas,
+    .card-front .qr-container img {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    /* Back Card (Year + Info) */
+    .card-back {
+      background: white;
+      position: relative;
+    }
+
+    .card-back .song-info {
+      position: absolute;
+      top: 3mm;
+      left: 3mm;
+      right: 3mm;
+      text-align: center;
+      font-size: 10pt;
+      color: #fff;
+      line-height: 1.3;
+    }
+
+    .card-back .artist {
+      font-weight: 600;
+    }
+
+    .card-back .song-name {
+      font-style: italic;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .card-back .year {
+      font-size: 48pt;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Print Media Query */
+    @media print {
+      * {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      body {
+        background: white;
+      }
+
+      .form-container {
+        display: none !important;
+      }
+
+      .print-container {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .print-preview {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: white;
+      }
+
+      .print-controls {
+        display: none !important;
+        visibility: hidden !important;
+        position: absolute !important;
+        left: -9999px !important;
+        width: 0 !important;
+        height: 0 !important;
+        overflow: hidden !important;
+      }
+
+      .page {
+        margin: 0 !important;
+        padding: 15mm !important;
+        box-shadow: none !important;
+        page-break-after: always;
+        page-break-inside: avoid;
+      }
+
+      .page:last-child {
+        page-break-after: auto;
+      }
+
+      .card {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .card-bleed {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .cut-mark {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        background: #000 !important;
+      }
+
+      .card-back .year {
+        color: #fff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      @page {
+        size: A4;
+        margin: 5mm;
+      }
+    }
+
+    /* Screen preview of print layout */
+    .print-preview {
+      padding: 40px 20px;
+      background: linear-gradient(135deg, #f0fff4 0%, #e8f5e9 50%, #f1f8f4 100%);
+      min-height: 100vh;
+    }
+
+    .print-controls {
+      max-width: 600px;
+      margin: 0 auto 30px;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+      border: 2px dashed #a5d6a7;
+      border-radius: 16px;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .print-preview h2 {
+      color: #2e7d32;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .print-controls .subtitle {
+      color: #558b59;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .print-controls .btn-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .print-preview .print-btn {
+      padding: 14px 32px;
+      background: #2e7d32;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(46,125,50,0.3);
+    }
+
+    .print-preview .print-btn:hover {
+      background: #1b5e20;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(46,125,50,0.4);
+    }
+
+    .print-preview .back-btn {
+      padding: 14px 32px;
+      background: rgba(255,255,255,0.8);
+      color: #2e7d32;
+      border: 2px solid #a5d6a7;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .print-preview .back-btn:hover {
+      background: white;
+      border-color: #2e7d32;
+      transform: translateY(-2px);
+    }
+
+    .print-preview .page {
+      margin: 20px auto;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      border-radius: 4px;
+    }
+
+    .page-label {
+      text-align: center;
+      color: #81c784;
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Page instructions */
+    .page-instruction {
+      text-align: center;
+      font-size: 9pt;
+      color: #888;
+      padding: 2mm 0;
+      border-bottom: 1px dashed #ccc;
+      margin-bottom: 3mm;
+    }
+
+    .page-instruction .page-num {
+      font-weight: 600;
+      color: #555;
+    }
+
+    .page-instruction .page-type {
+      font-weight: 700;
+      color: #2e7d32;
+    }
+
+    @media print {
+      .page-instruction {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="form-container" id="formContainer">
+  <div class="form-header">
+    <h1>🎵 Spotify Quiz Cards</h1>
+    <p>Generate printable quiz cards from any Spotify playlist</p>
+  </div>
+
+  <div class="error-message" id="errorMessage"></div>
+
+  <form id="quizForm">
+    <div class="step-cards">
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <div class="step-title">Get your Spotify API Credentials</div>
+        <div class="form-group">
+          <label for="clientId">Client ID</label>
+          <input type="password" id="clientId" required placeholder="Enter Client ID">
+        </div>
+        <div class="form-group">
+          <label for="clientSecret">Client Secret</label>
+          <input type="password" id="clientSecret" required placeholder="Enter Client Secret">
+        </div>
+        <small style="color: #81c784; font-size: 11px;">
+          Get credentials from <a href="https://developer.spotify.com/dashboard" target="_blank" style="color: #2e7d32;">Spotify Developer Dashboard</a>
+        </small>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <div class="step-title">Enter your Playlist Link here</div>
+        <div class="form-group">
+          <label for="playlistLink">Playlist URL</label>
+          <input type="text" id="playlistLink" required placeholder="https://open.spotify.com/playlist/...">
+        </div>
+        <div id="playlistPreview" class="playlist-preview" style="display: none;">
+          <div class="playlist-preview-loading">Loading playlist info...</div>
+          <div class="playlist-preview-content" style="display: none;">
+            <div class="playlist-preview-name"></div>
+            <div class="playlist-preview-info"></div>
+          </div>
+          <div class="playlist-preview-error" style="display: none;"></div>
+        </div>
+        <small style="color: #81c784; font-size: 11px;">
+          Paste any public Spotify playlist link
+        </small>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <div class="step-title">Choose a Color Scheme</div>
+        <div class="color-scheme-picker" id="colorSchemePicker">
+          <!-- Color scheme options will be added by JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <div class="submit-container">
+      <button type="submit" class="submit-btn" id="submitBtn">Generate Quiz Cards</button>
+    </div>
+  </form>
+
+  <p class="privacy-notice">
+    🔒 Your credentials are saved locally in your browser and never sent to any server.
+  </p>
+</div>
+
+<div class="print-container" id="printContainer">
+  <div class="print-preview" id="printPreview"></div>
+</div>
+
+<script>
+// Extract playlist ID from various Spotify URL formats
+function extractPlaylistId(url) {
+  const patterns = [
+    /playlist\/([a-zA-Z0-9]+)/,
+    /playlist:([a-zA-Z0-9]+)/
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+// Fetch access token from Spotify
+async function getAccessToken(clientId, clientSecret) {
+  const response = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Basic ' + btoa(clientId + ':' + clientSecret)
+    },
+    body: 'grant_type=client_credentials'
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to authenticate with Spotify. Check your Client ID and Secret.');
+  }
+
+  const data = await response.json();
+  console.log('🔑 Spotify Auth Response:', data);
+  return data.access_token;
+}
+
+// Fetch all tracks from a playlist (handles pagination)
+async function getPlaylistTracks(accessToken, playlistId) {
+  const tracks = [];
+  let url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`;
+
+  while (url) {
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': 'Bearer ' + accessToken
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch playlist. Make sure the playlist is public or you have access.');
+    }
+
+    const data = await response.json();
+    console.log(`📋 Playlist Tracks (batch ${tracks.length / 100 + 1}):`, data);
+    tracks.push(...data.items);
+    url = data.next;
+  }
+
+  console.log(`✅ Total tracks fetched: ${tracks.length}`);
+  return tracks;
+}
+
+// Color schemes for cards
+const COLOR_SCHEMES = {
+  vibrant: {
+    name: 'Vibrant',
+    colors: ['#1DB954', '#E91E63', '#9C27B0', '#3F51B5', '#00BCD4', '#FF5722', '#607D8B', '#795548'],
+    darkText: false
+  },
+  pastel: {
+    name: 'Pastel',
+    colors: ['#B8E6C1', '#F8BBD9', '#E1BEE7', '#C5CAE9', '#B2EBF2', '#FFCCBC', '#CFD8DC', '#D7CCC8'],
+    darkText: true
+  },
+  ocean: {
+    name: 'Ocean',
+    colors: ['#0077B6', '#00B4D8', '#48CAE4', '#90E0EF', '#023E8A', '#0096C7', '#ADE8F4', '#03045E'],
+    darkText: false
+  },
+  sunset: {
+    name: 'Sunset',
+    colors: ['#FF6B6B', '#FF8E72', '#FFB347', '#FFCC5C', '#FF6F61', '#E55B3C', '#FF9A76', '#FFA07A'],
+    darkText: false
+  },
+  forest: {
+    name: 'Forest',
+    colors: ['#2D5A27', '#4A7C49', '#6B9B68', '#8BC489', '#3E7A3E', '#228B22', '#556B2F', '#6B8E23'],
+    darkText: false
+  },
+  monochrome: {
+    name: 'Monochrome',
+    colors: ['#212121', '#424242', '#616161', '#757575', '#9E9E9E', '#333333', '#555555', '#777777'],
+    darkText: false
+  }
+};
+
+let currentColorScheme = 'vibrant';
+
+// Get a random color from the current palette
+function getRandomColor() {
+  const colors = COLOR_SCHEMES[currentColorScheme].colors;
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
+// Check if current scheme uses dark text
+function usesDarkText() {
+  return COLOR_SCHEMES[currentColorScheme].darkText === true;
+}
+
+// Parse track data into a simpler format
+function parseTrackData(items) {
+  const darkText = usesDarkText();
+  return items
+    .filter(item => item.track && item.track.external_urls)
+    .map(item => ({
+      name: item.track.name,
+      artist: item.track.artists.map(a => a.name).join(', '),
+      year: item.track.album.release_date ? item.track.album.release_date.substring(0, 4) : '????',
+      url: item.track.external_urls.spotify,
+      color: getRandomColor(),
+      darkText: darkText
+    }));
+}
+
+// Generate QR code as data URL with custom colors
+function generateQRCode(text, bgColor, darkText = false, size = 150) {
+  return new Promise((resolve) => {
+    const container = document.createElement('div');
+    const qr = new QRCode(container, {
+      text: text,
+      width: size,
+      height: size,
+      colorDark: darkText ? '#000000' : '#ffffff',
+      colorLight: bgColor,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+
+    // Wait for QR code to be generated
+    setTimeout(() => {
+      const canvas = container.querySelector('canvas');
+      const img = container.querySelector('img');
+      if (canvas) {
+        resolve(canvas.toDataURL());
+      } else if (img) {
+        resolve(img.src);
+      }
+    }, 100);
+  });
+}
+
+// Create a page of cards (9 cards)
+function createCardsPage(cards, isFront) {
+  const page = document.createElement('div');
+  page.className = 'page';
+
+  const grid = document.createElement('div');
+  grid.className = 'cards-grid';
+
+  // For back pages, reverse the order horizontally for duplex alignment
+  // When printed duplex, back pages need to be mirrored horizontally
+  const orderedCards = isFront ? cards : [
+    cards[2], cards[1], cards[0],
+    cards[5], cards[4], cards[3],
+    cards[8], cards[7], cards[6],
+    cards[11], cards[10], cards[9]
+  ];
+
+  for (let i = 0; i < 12; i++) {
+    const card = document.createElement('div');
+    card.className = 'card ' + (isFront ? 'card-front' : 'card-back');
+
+    // Add cutting marks
+    const marks = [
+      'cut-tl-h', 'cut-tl-v', 'cut-tr-h', 'cut-tr-v',
+      'cut-bl-h', 'cut-bl-v', 'cut-br-h', 'cut-br-v'
+    ];
+    marks.forEach(markClass => {
+      const mark = document.createElement('div');
+      mark.className = 'cut-mark ' + (markClass.includes('-h') ? 'cut-mark-h' : 'cut-mark-v') + ' ' + markClass;
+      card.appendChild(mark);
+    });
+
+    if (orderedCards[i]) {
+      // Apply background color with box-shadow for bleed
+      card.style.backgroundColor = orderedCards[i].color;
+      card.style.boxShadow = `0 0 0 2mm ${orderedCards[i].color}`;
+
+      if (isFront) {
+        const qrContainer = document.createElement('div');
+        qrContainer.className = 'qr-container';
+        qrContainer.innerHTML = `<img src="${orderedCards[i].qrDataUrl}" alt="QR Code">`;
+        card.appendChild(qrContainer);
+      } else {
+        const songInfo = document.createElement('div');
+        songInfo.className = 'song-info';
+        if (orderedCards[i].darkText) {
+          songInfo.style.color = '#000';
+        }
+        songInfo.innerHTML = `
+          <div class="artist">${escapeHtml(orderedCards[i].artist)}</div>
+          <div class="song-name" style="${orderedCards[i].darkText ? 'color: #333;' : ''}">${escapeHtml(orderedCards[i].name)}</div>
+        `;
+        card.appendChild(songInfo);
+
+        const year = document.createElement('div');
+        year.className = 'year';
+        if (orderedCards[i].darkText) {
+          year.style.color = '#000';
+        }
+        year.textContent = orderedCards[i].year;
+        card.appendChild(year);
+      }
+    }
+
+    grid.appendChild(card);
+  }
+
+  page.appendChild(grid);
+  return page;
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Generate all print pages
+async function generatePrintPages(tracks) {
+  const printPreview = document.getElementById('printPreview');
+  printPreview.innerHTML = '';
+
+  // Add header and buttons in a control container (hidden during print)
+  const controls = document.createElement('div');
+  controls.className = 'print-controls';
+
+  const header = document.createElement('h2');
+  header.textContent = `🎵 ${tracks.length} Quiz Cards Ready!`;
+  controls.appendChild(header);
+
+  const subtitle = document.createElement('p');
+  subtitle.className = 'subtitle';
+  subtitle.textContent = 'Preview your cards below, then print with duplex (two-sided) enabled';
+  controls.appendChild(subtitle);
+
+  const btnGroup = document.createElement('div');
+  btnGroup.className = 'btn-group';
+
+  const printBtn = document.createElement('button');
+  printBtn.className = 'print-btn';
+  printBtn.textContent = '🖨️ Print Cards';
+  printBtn.onclick = () => window.print();
+  btnGroup.appendChild(printBtn);
+
+  const backBtn = document.createElement('button');
+  backBtn.className = 'back-btn';
+  backBtn.textContent = '← Back';
+  backBtn.onclick = () => {
+    document.getElementById('formContainer').style.display = 'block';
+    document.getElementById('printContainer').style.display = 'none';
+  };
+  btnGroup.appendChild(backBtn);
+
+  controls.appendChild(btnGroup);
+
+  printPreview.appendChild(controls);
+
+  // Generate QR codes for all tracks (with matching background color)
+  const tracksWithQR = [];
+  for (const track of tracks) {
+    const qrDataUrl = await generateQRCode(track.url, track.color, track.darkText);
+    tracksWithQR.push({ ...track, qrDataUrl });
+  }
+
+  // Split into groups of 12
+  const pageGroups = [];
+  for (let i = 0; i < tracksWithQR.length; i += 12) {
+    const group = tracksWithQR.slice(i, i + 12);
+    // Pad with null if less than 12
+    while (group.length < 12) {
+      group.push(null);
+    }
+    pageGroups.push(group);
+  }
+
+  // Create pages: front, back, front, back...
+  let pageNumber = 0;
+  for (let groupIndex = 0; groupIndex < pageGroups.length; groupIndex++) {
+    const group = pageGroups[groupIndex];
+
+    // Front page
+    pageNumber++;
+    const frontPage = createCardsPage(group, true);
+    const frontLabel = document.createElement('div');
+    frontLabel.className = 'page-instruction';
+    frontLabel.innerHTML = `<span class="page-num">Page ${pageNumber} of ${pageGroups.length * 2}</span> • <span class="page-type">FRONT SIDE</span> • Print this page first, then flip paper and print back side`;
+    frontPage.insertBefore(frontLabel, frontPage.firstChild);
+    printPreview.appendChild(frontPage);
+
+    // Back page
+    pageNumber++;
+    const backPage = createCardsPage(group, false);
+    const backLabel = document.createElement('div');
+    backLabel.className = 'page-instruction';
+    backLabel.innerHTML = `<span class="page-num">Page ${pageNumber} of ${pageGroups.length * 2}</span> • <span class="page-type">BACK SIDE</span> • This page shows song info (prints on reverse of previous page)`;
+    backPage.insertBefore(backLabel, backPage.firstChild);
+    printPreview.appendChild(backPage);
+  }
+}
+
+// Show error message
+function showError(message) {
+  const errorEl = document.getElementById('errorMessage');
+  errorEl.textContent = message;
+  errorEl.style.display = 'block';
+}
+
+// Hide error message
+function hideError() {
+  document.getElementById('errorMessage').style.display = 'none';
+}
+
+// Load saved credentials from localStorage
+function loadSavedCredentials() {
+  const savedClientId = localStorage.getItem('spotify_client_id');
+  const savedClientSecret = localStorage.getItem('spotify_client_secret');
+
+  if (savedClientId) {
+    document.getElementById('clientId').value = savedClientId;
+  }
+  if (savedClientSecret) {
+    document.getElementById('clientSecret').value = savedClientSecret;
+  }
+}
+
+// Save credentials to localStorage
+function saveCredentials(clientId, clientSecret) {
+  localStorage.setItem('spotify_client_id', clientId);
+  localStorage.setItem('spotify_client_secret', clientSecret);
+}
+
+// Build color scheme picker UI
+function buildColorSchemePicker() {
+  const picker = document.getElementById('colorSchemePicker');
+  picker.innerHTML = '';
+
+  Object.entries(COLOR_SCHEMES).forEach(([key, scheme]) => {
+    const option = document.createElement('div');
+    option.className = 'color-scheme-option' + (key === currentColorScheme ? ' selected' : '');
+    option.onclick = () => selectColorScheme(key);
+
+    const name = document.createElement('span');
+    name.className = 'color-scheme-name';
+    name.textContent = scheme.name;
+    option.appendChild(name);
+
+    const preview = document.createElement('div');
+    preview.className = 'color-scheme-preview';
+    scheme.colors.slice(0, 6).forEach(color => {
+      const dot = document.createElement('div');
+      dot.className = 'color-dot';
+      dot.style.backgroundColor = color;
+      preview.appendChild(dot);
+    });
+    option.appendChild(preview);
+
+    picker.appendChild(option);
+  });
+}
+
+// Select a color scheme
+function selectColorScheme(scheme) {
+  currentColorScheme = scheme;
+  document.querySelectorAll('.color-scheme-option').forEach(el => {
+    el.classList.remove('selected');
+  });
+  event.currentTarget.classList.add('selected');
+}
+
+// Fetch playlist info for preview
+async function fetchPlaylistInfo(playlistId) {
+  const clientId = document.getElementById('clientId').value.trim();
+  const clientSecret = document.getElementById('clientSecret').value.trim();
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Enter your Spotify credentials first');
+  }
+
+  const accessToken = await getAccessToken(clientId, clientSecret);
+
+  const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}?fields=name,owner.display_name,tracks.total`, {
+    headers: {
+      'Authorization': 'Bearer ' + accessToken
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Could not find playlist');
+  }
+
+  const data = await response.json();
+  console.log('📝 Playlist Info:', data);
+  return data;
+}
+
+// Preview playlist when URL is pasted
+let previewTimeout = null;
+async function previewPlaylist() {
+  const playlistLink = document.getElementById('playlistLink').value.trim();
+  const previewEl = document.getElementById('playlistPreview');
+  const loadingEl = previewEl.querySelector('.playlist-preview-loading');
+  const contentEl = previewEl.querySelector('.playlist-preview-content');
+  const errorEl = previewEl.querySelector('.playlist-preview-error');
+
+  // Reset state
+  loadingEl.style.display = 'none';
+  contentEl.style.display = 'none';
+  errorEl.style.display = 'none';
+
+  const playlistId = extractPlaylistId(playlistLink);
+  if (!playlistId) {
+    previewEl.style.display = 'none';
+    return;
+  }
+
+  // Show loading state
+  previewEl.style.display = 'block';
+  loadingEl.style.display = 'block';
+
+  try {
+    const info = await fetchPlaylistInfo(playlistId);
+
+    // Show content
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'block';
+    previewEl.querySelector('.playlist-preview-name').textContent = `✓ ${info.name}`;
+    previewEl.querySelector('.playlist-preview-info').textContent = `by ${info.owner.display_name} • ${info.tracks.total} tracks`;
+
+    // Save credentials since they worked
+    saveCredentials(
+      document.getElementById('clientId').value.trim(),
+      document.getElementById('clientSecret').value.trim()
+    );
+  } catch (error) {
+    loadingEl.style.display = 'none';
+    errorEl.style.display = 'block';
+    errorEl.textContent = error.message;
+  }
+}
+
+// Debounced preview on input change
+function handlePlaylistInput() {
+  clearTimeout(previewTimeout);
+  previewTimeout = setTimeout(previewPlaylist, 500);
+}
+
+// Load credentials on page load
+document.addEventListener('DOMContentLoaded', () => {
+  loadSavedCredentials();
+  buildColorSchemePicker();
+
+  // Add playlist preview listener
+  document.getElementById('playlistLink').addEventListener('input', handlePlaylistInput);
+  document.getElementById('playlistLink').addEventListener('paste', () => {
+    setTimeout(handlePlaylistInput, 100);
+  });
+});
+
+// Form submission handler
+document.getElementById('quizForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  hideError();
+
+  const clientId = document.getElementById('clientId').value.trim();
+  const clientSecret = document.getElementById('clientSecret').value.trim();
+  const playlistLink = document.getElementById('playlistLink').value.trim();
+
+  // Save credentials for next time
+  saveCredentials(clientId, clientSecret);
+
+  const playlistId = extractPlaylistId(playlistLink);
+  if (!playlistId) {
+    showError('Invalid playlist link. Please paste a valid Spotify playlist URL.');
+    return;
+  }
+
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Loading...';
+
+  try {
+    // Get access token
+    const accessToken = await getAccessToken(clientId, clientSecret);
+
+    // Fetch playlist tracks
+    submitBtn.textContent = 'Fetching playlist...';
+    const items = await getPlaylistTracks(accessToken, playlistId);
+
+    if (items.length === 0) {
+      throw new Error('The playlist is empty or could not be accessed.');
+    }
+
+    // Parse track data
+    const tracks = parseTrackData(items);
+
+    if (tracks.length === 0) {
+      throw new Error('No playable tracks found in the playlist.');
+    }
+
+    // Generate print pages
+    submitBtn.textContent = 'Generating cards...';
+    await generatePrintPages(tracks);
+
+    // Show print preview
+    document.getElementById('formContainer').style.display = 'none';
+    document.getElementById('printContainer').style.display = 'block';
+
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Generate Song Quiz Cards';
+  }
+});
+</script>
+
+</body>
+</html>
