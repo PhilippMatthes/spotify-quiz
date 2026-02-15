@@ -4,7 +4,7 @@ Generate printable quiz cards from any Spotify playlist! Perfect for music trivi
 
 **[Try it live](https://philippmatthes.github.io/spotify-quiz/)**
 
-
+![](demo.gif)
 
 ## How to Use
 
