@@ -27,6 +27,8 @@
 
   <!-- QR Code Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- QR Code Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -210,6 +212,403 @@
       margin-top: 24px;
       font-size: 12px;
       color: #81c784;
+    }
+
+    /* Scanner Section Styles */
+    .scanner-section {
+      max-width: 1000px;
+      margin: 30px auto 0;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+      border: 2px dashed #a5d6a7;
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .scanner-section.disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .scanner-section.disabled .scanner-btn,
+    .scanner-section.disabled .copy-btn {
+      pointer-events: none;
+    }
+
+    /* File URL Warning */
+    .file-url-warning {
+      margin: 20px auto 0;
+      padding: 20px;
+      background: #ffebee;
+      border: 1px solid #ffcdd2;
+      border-radius: 12px;
+      max-width: 500px;
+    }
+
+    .file-url-warning-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #c62828;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .file-url-warning p {
+      font-size: 12px;
+      color: #b71c1c;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .file-url-warning code {
+      background: #fff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      border: 1px solid #ffcdd2;
+    }
+
+    .file-url-warning a {
+      color: #c62828;
+      font-weight: 600;
+    }
+
+    .scanner-section h2 {
+      color: #2e7d32;
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .scanner-section p {
+      color: #558b59;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .scanner-btn {
+      padding: 14px 32px;
+      background: #1DB954;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(29,185,84,0.3);
+      margin: 5px;
+    }
+
+    .scanner-btn:hover {
+      background: #1aa34a;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(29,185,84,0.4);
+    }
+
+    .scanner-btn:disabled {
+      background: #a5d6a7;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .scanner-btn.secondary {
+      background: rgba(255,255,255,0.8);
+      color: #2e7d32;
+      border: 2px solid #a5d6a7;
+      box-shadow: none;
+    }
+
+    .scanner-btn.secondary:hover {
+      background: white;
+      border-color: #2e7d32;
+    }
+
+    /* Scanner Modal */
+    .scanner-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .scanner-modal.active {
+      display: flex;
+    }
+
+    .scanner-modal-content {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .scanner-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .scanner-modal-header h3 {
+      color: #2e7d32;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .close-modal-btn {
+      background: none;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .close-modal-btn:hover {
+      color: #333;
+    }
+
+    #qr-reader {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    #qr-reader video {
+      border-radius: 12px;
+    }
+
+    .scanner-status {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .scanner-status.info {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+
+    .scanner-status.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .scanner-status.error {
+      background: #ffebee;
+      color: #c62828;
+    }
+
+    .scanner-status.warning {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    /* Now Playing Section */
+    .now-playing {
+      margin-top: 20px;
+      padding: 16px;
+      background: linear-gradient(135deg, #1DB954 0%, #1aa34a 100%);
+      border-radius: 12px;
+      color: white;
+      display: none;
+    }
+
+    .now-playing.active {
+      display: block;
+    }
+
+    .now-playing-header {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.8;
+      margin-bottom: 8px;
+    }
+
+    .now-playing-track {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .now-playing-artist {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    /* Auth Status */
+    .auth-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .auth-status.connected {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .auth-status.disconnected {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    .auth-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .auth-status.connected .auth-status-dot {
+      background: #2e7d32;
+    }
+
+    .auth-status.disconnected .auth-status-dot {
+      background: #e65100;
+    }
+
+    /* Device Selection */
+    .device-select-container {
+      margin-top: 16px;
+      text-align: left;
+    }
+
+    .device-select-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #2e7d32;
+      margin-bottom: 8px;
+    }
+
+    .device-select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #c8e6c9;
+      border-radius: 10px;
+      font-size: 14px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .device-select:focus {
+      outline: none;
+      border-color: #2e7d32;
+      box-shadow: 0 0 0 3px rgba(46,125,50,0.1);
+    }
+
+    .no-devices-message {
+      font-size: 13px;
+      color: #e65100;
+      margin-top: 8px;
+    }
+
+    /* Redirect URI Setup Box */
+    .setup-instructions {
+      margin: 20px auto 0;
+      padding: 20px;
+      background: #fff3e0;
+      border: 1px solid #ffcc80;
+      border-radius: 12px;
+      text-align: left;
+      max-width: 500px;
+    }
+
+    .setup-instructions-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e65100;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .setup-instructions p {
+      font-size: 12px;
+      color: #bf360c;
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
+    .setup-instructions a {
+      color: #e65100;
+      font-weight: 600;
+    }
+
+    .redirect-uri-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      border: 1px solid #ffcc80;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+    }
+
+    .redirect-uri-text {
+      flex: 1;
+      font-family: monospace;
+      font-size: 12px;
+      color: #333;
+      word-break: break-all;
+    }
+
+    .copy-btn {
+      padding: 6px 12px;
+      background: #e65100;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .copy-btn:hover {
+      background: #bf360c;
+    }
+
+    .copy-btn.copied {
+      background: #2e7d32;
+    }
+
+    .setup-instructions-steps {
+      font-size: 11px;
+      color: #795548;
+      margin-top: 10px;
+      padding-left: 16px;
+    }
+
+    .setup-instructions-steps li {
+      margin-bottom: 4px;
     }
 
     /* Color Scheme Picker */
@@ -690,6 +1089,106 @@
   <p class="privacy-notice">
     🔒 Your credentials are saved locally in your browser and never sent to any server.
   </p>
+
+  <!-- QR Scanner Section -->
+  <div class="scanner-section" id="scannerSection">
+    <h2>📷 QR Code Scanner</h2>
+    <p>Scan a quiz card QR code to play the song on Spotify</p>
+
+    <div id="authStatus" class="auth-status disconnected">
+      <span class="auth-status-dot"></span>
+      <span id="authStatusText">Not connected to Spotify</span>
+    </div>
+
+    <div id="scannerButtons">
+      <button class="scanner-btn" id="connectSpotifyBtn" onclick="initiateSpotifyAuth()">
+        🔗 Connect to Spotify
+      </button>
+      <button class="scanner-btn secondary" id="startScannerBtn" onclick="openScannerModal()" style="display: none;">
+        📷 Start Scanner
+      </button>
+    </div>
+
+    <!-- File URL Warning (shown when opening directly from filesystem) -->
+    <div class="file-url-warning" id="fileUrlWarning" style="display: none;">
+      <div class="file-url-warning-title">
+        ⚠️ Scanner Not Available
+      </div>
+      <p>
+        The QR scanner cannot work when opening the file directly from your filesystem (<code>file://</code> URLs).
+      </p>
+      <p>
+        Please use Docker to run this app locally. See the <a href="https://github.com/PhilippMatthes/spotify-quiz#using-docker" target="_blank">README</a> for instructions:
+      </p>
+      <p>
+        <code>docker build -t spotify-quiz .</code><br>
+        <code>docker run -p 8000:80 spotify-quiz</code>
+      </p>
+      <p>
+        Then access via <code>http://127.0.0.1:8000</code>
+      </p>
+    </div>
+
+    <!-- Setup Instructions -->
+    <div class="setup-instructions" id="setupInstructions">
+      <div class="setup-instructions-title">
+        ⚙️ Setup Required
+      </div>
+      <p>
+        To use the scanner, add this Redirect URI to your
+        <a href="https://developer.spotify.com/dashboard" target="_blank">Spotify Developer Dashboard</a>:
+      </p>
+      <div class="redirect-uri-box">
+        <span class="redirect-uri-text" id="redirectUriText"></span>
+        <button class="copy-btn" id="copyRedirectBtn" onclick="copyRedirectUri()">📋 Copy</button>
+      </div>
+      <ol class="setup-instructions-steps">
+        <li>Go to your app in the Spotify Developer Dashboard</li>
+        <li>Click "Edit Settings"</li>
+        <li>Add the URI above to "Redirect URIs"</li>
+        <li>Click "Save"</li>
+      </ol>
+      <p style="margin-top: 10px; font-size: 11px; color: #bf360c;">
+        <strong>⚠️ Important:</strong> The trailing slash (<code>/</code>) at the end of the URI is required. Make sure to include it exactly as shown.
+      </p>
+    </div>
+
+    <div id="nowPlaying" class="now-playing">
+      <div class="now-playing-header">♫ Now Playing</div>
+      <div class="now-playing-track" id="nowPlayingTrack">-</div>
+      <div class="now-playing-artist" id="nowPlayingArtist">-</div>
+    </div>
+  </div>
+</div>
+
+<!-- Scanner Modal -->
+<div class="scanner-modal" id="scannerModal">
+  <div class="scanner-modal-content">
+    <div class="scanner-modal-header">
+      <h3>📷 Scan QR Code</h3>
+      <button class="close-modal-btn" onclick="closeScannerModal()">&times;</button>
+    </div>
+
+    <div id="qr-reader"></div>
+
+    <div id="scannerStatus" class="scanner-status info">
+      Point your camera at a Spotify QR code
+    </div>
+
+    <div class="device-select-container" id="deviceSelectContainer" style="display: none;">
+      <label class="device-select-label">Playback Device</label>
+      <select class="device-select" id="deviceSelect">
+        <option value="">Select a device...</option>
+      </select>
+      <p class="no-devices-message" id="noDevicesMessage" style="display: none;">
+        No active devices found. Open Spotify on a device first.
+      </p>
+    </div>
+
+    <div style="margin-top: 20px; text-align: center;">
+      <button class="scanner-btn secondary" onclick="closeScannerModal()">Close Scanner</button>
+    </div>
+  </div>
 </div>
 
 <div class="print-container" id="printContainer">
@@ -1163,6 +1662,630 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(handlePlaylistInput, 100);
   });
 });
+
+// ==========================================
+// QR SCANNER & SPOTIFY PLAYBACK SECTION
+// ==========================================
+
+// Spotify OAuth Configuration
+const SPOTIFY_AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
+const SPOTIFY_TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
+// Use origin + pathname, but normalize to remove trailing index.html for consistency
+const REDIRECT_URI = (function() {
+  let uri = window.location.origin + window.location.pathname;
+  // Remove trailing index.html if present for consistency
+  if (uri.endsWith('/index.html')) {
+    uri = uri.slice(0, -10); // Remove 'index.html'
+  }
+  // Ensure trailing slash for consistency
+  if (!uri.endsWith('/')) {
+    uri += '/';
+  }
+  return uri;
+})();
+const SCOPES = [
+  'user-modify-playback-state',
+  'user-read-playback-state',
+  'user-read-currently-playing'
+].join(' ');
+
+let userAccessToken = null;
+let html5QrCode = null;
+let selectedDeviceId = null;
+
+// Generate random string for PKCE
+function generateRandomString(length) {
+  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let text = '';
+  for (let i = 0; i < length; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
+}
+
+// Generate code verifier for PKCE
+function generateCodeVerifier() {
+  return generateRandomString(128);
+}
+
+// Generate code challenge from verifier (SHA256 + base64url)
+async function generateCodeChallenge(verifier) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const digest = await window.crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
+// Initiate Spotify OAuth flow with PKCE
+async function initiateSpotifyAuth() {
+  const clientId = document.getElementById('clientId').value.trim();
+  const clientSecret = document.getElementById('clientSecret').value.trim();
+
+  if (!clientId) {
+    alert('Please enter your Spotify Client ID first (in Step 1)');
+    return;
+  }
+
+  // Save credentials before redirecting
+  if (clientId && clientSecret) {
+    saveCredentials(clientId, clientSecret);
+  }
+
+  // Generate and store code verifier
+  const codeVerifier = generateCodeVerifier();
+  localStorage.setItem('spotify_code_verifier', codeVerifier);
+  localStorage.setItem('spotify_auth_client_id', clientId);
+
+  // Generate code challenge
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+  // Generate state for security
+  const state = generateRandomString(16);
+  localStorage.setItem('spotify_auth_state', state);
+
+  // Build authorization URL
+  const params = new URLSearchParams({
+    client_id: clientId,
+    response_type: 'code',
+    redirect_uri: REDIRECT_URI,
+    scope: SCOPES,
+    state: state,
+    code_challenge_method: 'S256',
+    code_challenge: codeChallenge
+  });
+
+  // Redirect to Spotify authorization
+  window.location.href = `${SPOTIFY_AUTH_ENDPOINT}?${params.toString()}`;
+}
+
+// Exchange authorization code for access token
+async function exchangeCodeForToken(code) {
+  const codeVerifier = localStorage.getItem('spotify_code_verifier');
+  const clientId = localStorage.getItem('spotify_auth_client_id');
+
+  if (!codeVerifier || !clientId) {
+    throw new Error('Missing PKCE verifier or client ID');
+  }
+
+  const response = await fetch(SPOTIFY_TOKEN_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      client_id: clientId,
+      grant_type: 'authorization_code',
+      code: code,
+      redirect_uri: REDIRECT_URI,
+      code_verifier: codeVerifier
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error_description || 'Failed to exchange code for token');
+  }
+
+  const data = await response.json();
+
+  // Store tokens
+  userAccessToken = data.access_token;
+  localStorage.setItem('spotify_user_access_token', data.access_token);
+  localStorage.setItem('spotify_token_expiry', Date.now() + (data.expires_in * 1000));
+
+  if (data.refresh_token) {
+    localStorage.setItem('spotify_refresh_token', data.refresh_token);
+  }
+
+  // Clean up PKCE data
+  localStorage.removeItem('spotify_code_verifier');
+  localStorage.removeItem('spotify_auth_state');
+
+  return data.access_token;
+}
+
+// Refresh access token
+async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem('spotify_refresh_token');
+  const clientId = localStorage.getItem('spotify_auth_client_id');
+
+  if (!refreshToken || !clientId) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(SPOTIFY_TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to refresh token');
+    }
+
+    const data = await response.json();
+    userAccessToken = data.access_token;
+    localStorage.setItem('spotify_user_access_token', data.access_token);
+    localStorage.setItem('spotify_token_expiry', Date.now() + (data.expires_in * 1000));
+
+    if (data.refresh_token) {
+      localStorage.setItem('spotify_refresh_token', data.refresh_token);
+    }
+
+    return data.access_token;
+  } catch (error) {
+    console.error('Token refresh failed:', error);
+    return null;
+  }
+}
+
+// Check if user is authenticated
+async function checkUserAuth() {
+  const token = localStorage.getItem('spotify_user_access_token');
+  const expiry = localStorage.getItem('spotify_token_expiry');
+
+  if (!token) {
+    updateAuthStatus(false);
+    return false;
+  }
+
+  // Check if token is expired or about to expire (within 5 minutes)
+  if (expiry && Date.now() > parseInt(expiry) - 300000) {
+    const newToken = await refreshAccessToken();
+    if (!newToken) {
+      updateAuthStatus(false);
+      return false;
+    }
+  } else {
+    userAccessToken = token;
+  }
+
+  updateAuthStatus(true);
+  return true;
+}
+
+// Update auth status UI
+function updateAuthStatus(isConnected) {
+  const statusEl = document.getElementById('authStatus');
+  const statusTextEl = document.getElementById('authStatusText');
+  const connectBtn = document.getElementById('connectSpotifyBtn');
+  const scannerBtn = document.getElementById('startScannerBtn');
+
+  if (isConnected) {
+    statusEl.className = 'auth-status connected';
+    statusTextEl.textContent = 'Connected to Spotify';
+    connectBtn.textContent = '✓ Connected';
+    connectBtn.disabled = true;
+    scannerBtn.style.display = 'inline-block';
+  } else {
+    statusEl.className = 'auth-status disconnected';
+    statusTextEl.textContent = 'Not connected to Spotify';
+    connectBtn.textContent = '🔗 Connect to Spotify';
+    connectBtn.disabled = false;
+    scannerBtn.style.display = 'none';
+  }
+}
+
+// Get available Spotify devices
+async function getAvailableDevices() {
+  if (!userAccessToken) return [];
+
+  try {
+    const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
+      headers: {
+        'Authorization': 'Bearer ' + userAccessToken
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch devices');
+    }
+
+    const data = await response.json();
+    return data.devices || [];
+  } catch (error) {
+    console.error('Error fetching devices:', error);
+    return [];
+  }
+}
+
+// Update device selector
+async function updateDeviceSelector() {
+  const devices = await getAvailableDevices();
+  const selectEl = document.getElementById('deviceSelect');
+  const containerEl = document.getElementById('deviceSelectContainer');
+  const noDevicesEl = document.getElementById('noDevicesMessage');
+
+  containerEl.style.display = 'block';
+  selectEl.innerHTML = '<option value="">Select a device...</option>';
+
+  if (devices.length === 0) {
+    noDevicesEl.style.display = 'block';
+    return;
+  }
+
+  noDevicesEl.style.display = 'none';
+
+  devices.forEach(device => {
+    const option = document.createElement('option');
+    option.value = device.id;
+    option.textContent = `${device.name} (${device.type})${device.is_active ? ' - Active' : ''}`;
+    if (device.is_active) {
+      option.selected = true;
+      selectedDeviceId = device.id;
+    }
+    selectEl.appendChild(option);
+  });
+
+  selectEl.onchange = (e) => {
+    selectedDeviceId = e.target.value;
+  };
+}
+
+// Extract track URI from Spotify URL
+function extractTrackUri(url) {
+  // Match track URLs like https://open.spotify.com/track/xxx
+  const trackMatch = url.match(/track\/([a-zA-Z0-9]+)/);
+  if (trackMatch) {
+    return `spotify:track:${trackMatch[1]}`;
+  }
+  return null;
+}
+
+// Play a track on Spotify
+async function playTrack(trackUri) {
+  if (!userAccessToken) {
+    throw new Error('Not authenticated with Spotify');
+  }
+
+  const deviceId = selectedDeviceId || null;
+
+  const body = {
+    uris: [trackUri]
+  };
+
+  let url = 'https://api.spotify.com/v1/me/player/play';
+  if (deviceId) {
+    url += `?device_id=${deviceId}`;
+  }
+
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'Bearer ' + userAccessToken,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (response.status === 404) {
+    throw new Error('No active device found. Please open Spotify on a device and try again.');
+  }
+
+  if (!response.ok && response.status !== 204) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error?.message || 'Failed to play track');
+  }
+
+  return true;
+}
+
+// Get track info from Spotify
+async function getTrackInfo(trackId) {
+  const clientId = document.getElementById('clientId').value.trim();
+  const clientSecret = document.getElementById('clientSecret').value.trim();
+
+  if (!clientId || !clientSecret) {
+    return null;
+  }
+
+  try {
+    const accessToken = await getAccessToken(clientId, clientSecret);
+    const response = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
+      headers: {
+        'Authorization': 'Bearer ' + accessToken
+      }
+    });
+
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching track info:', error);
+    return null;
+  }
+}
+
+// Update now playing display
+function updateNowPlaying(trackName, artistName) {
+  const nowPlayingEl = document.getElementById('nowPlaying');
+  const trackEl = document.getElementById('nowPlayingTrack');
+  const artistEl = document.getElementById('nowPlayingArtist');
+
+  trackEl.textContent = trackName;
+  artistEl.textContent = artistName;
+  nowPlayingEl.classList.add('active');
+}
+
+// Open scanner modal
+async function openScannerModal() {
+  const modal = document.getElementById('scannerModal');
+  modal.classList.add('active');
+
+  // Update device selector
+  await updateDeviceSelector();
+
+  // Initialize QR scanner
+  if (!html5QrCode) {
+    html5QrCode = new Html5Qrcode('qr-reader');
+  }
+
+  const statusEl = document.getElementById('scannerStatus');
+  statusEl.className = 'scanner-status info';
+  statusEl.textContent = 'Starting camera...';
+
+  try {
+    await html5QrCode.start(
+      { facingMode: 'environment' },
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 250 }
+      },
+      onQrCodeScanned,
+      (errorMessage) => {
+        // Ignore scan errors (no QR code found in frame)
+      }
+    );
+    statusEl.textContent = 'Point your camera at a Spotify QR code';
+  } catch (error) {
+    console.error('Camera error:', error);
+    statusEl.className = 'scanner-status error';
+    statusEl.textContent = 'Could not access camera. Please allow camera permissions.';
+  }
+}
+
+// Close scanner modal
+async function closeScannerModal() {
+  const modal = document.getElementById('scannerModal');
+  modal.classList.remove('active');
+
+  if (html5QrCode && html5QrCode.isScanning) {
+    try {
+      await html5QrCode.stop();
+    } catch (error) {
+      console.error('Error stopping scanner:', error);
+    }
+  }
+}
+
+// Handle scanned QR code
+async function onQrCodeScanned(decodedText) {
+  const statusEl = document.getElementById('scannerStatus');
+
+  // Check if it's a Spotify URL
+  if (!decodedText.includes('spotify.com') && !decodedText.includes('spotify:')) {
+    statusEl.className = 'scanner-status warning';
+    statusEl.textContent = 'Not a Spotify link. Keep scanning...';
+    return;
+  }
+
+  // Extract track URI
+  const trackUri = extractTrackUri(decodedText);
+  if (!trackUri) {
+    statusEl.className = 'scanner-status warning';
+    statusEl.textContent = 'Not a Spotify track link. Keep scanning...';
+    return;
+  }
+
+  // Stop scanner temporarily
+  if (html5QrCode && html5QrCode.isScanning) {
+    await html5QrCode.stop();
+  }
+
+  statusEl.className = 'scanner-status info';
+  statusEl.textContent = 'Playing track...';
+
+  try {
+    // Get track info for display
+    const trackId = trackUri.split(':')[2];
+    const trackInfo = await getTrackInfo(trackId);
+
+    // Play the track
+    await playTrack(trackUri);
+
+    statusEl.className = 'scanner-status success';
+    if (trackInfo) {
+      statusEl.textContent = `▶ Now playing: ${trackInfo.name} by ${trackInfo.artists.map(a => a.name).join(', ')}`;
+      updateNowPlaying(trackInfo.name, trackInfo.artists.map(a => a.name).join(', '));
+    } else {
+      statusEl.textContent = '▶ Track is now playing!';
+    }
+
+    // Close modal after a delay
+    setTimeout(() => {
+      closeScannerModal();
+    }, 2000);
+
+  } catch (error) {
+    statusEl.className = 'scanner-status error';
+    statusEl.textContent = error.message;
+
+    // Restart scanner after error
+    setTimeout(async () => {
+      try {
+        await html5QrCode.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          onQrCodeScanned,
+          () => {}
+        );
+        statusEl.className = 'scanner-status info';
+        statusEl.textContent = 'Point your camera at a Spotify QR code';
+      } catch (e) {
+        console.error('Error restarting scanner:', e);
+      }
+    }, 3000);
+  }
+}
+
+// Handle OAuth callback on page load
+async function handleOAuthCallback() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('code');
+  const state = urlParams.get('state');
+  const error = urlParams.get('error');
+
+  if (error) {
+    console.error('OAuth error:', error);
+    return;
+  }
+
+  if (code) {
+    // Verify state
+    const savedState = localStorage.getItem('spotify_auth_state');
+    if (state !== savedState) {
+      console.error('State mismatch');
+      return;
+    }
+
+    try {
+      await exchangeCodeForToken(code);
+      updateAuthStatus(true);
+
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (error) {
+      console.error('Token exchange failed:', error);
+    }
+  }
+}
+
+// Check if URL is a file:// URL
+function isFileUrl() {
+  return window.location.protocol === 'file:';
+}
+
+// Check if hostname is localhost (should redirect to 127.0.0.1)
+function isLocalhostUrl() {
+  return window.location.hostname === 'localhost';
+}
+
+// Redirect localhost to 127.0.0.1 for Spotify OAuth compatibility
+function redirectLocalhostTo127() {
+  if (isLocalhostUrl()) {
+    const newUrl = window.location.href.replace('localhost', '127.0.0.1');
+    window.location.replace(newUrl);
+    return true;
+  }
+  return false;
+}
+
+// Copy redirect URI to clipboard
+function copyRedirectUri() {
+  navigator.clipboard.writeText(REDIRECT_URI).then(() => {
+    const btn = document.getElementById('copyRedirectBtn');
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '📋 Copy';
+      btn.classList.remove('copied');
+    }, 2000);
+  }).catch(err => {
+    console.error('Failed to copy:', err);
+    // Fallback: select the text
+    const textEl = document.getElementById('redirectUriText');
+    const range = document.createRange();
+    range.selectNode(textEl);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+  });
+}
+
+// Update redirect URI display
+function updateRedirectUriDisplay() {
+  document.getElementById('redirectUriText').textContent = REDIRECT_URI;
+}
+
+// Update scanner section based on URL type
+function updateScannerSectionState() {
+  const scannerSection = document.getElementById('scannerSection');
+  const fileUrlWarning = document.getElementById('fileUrlWarning');
+  const setupInstructions = document.getElementById('setupInstructions');
+  const authStatus = document.getElementById('authStatus');
+  const scannerButtons = document.getElementById('scannerButtons');
+
+  if (isFileUrl()) {
+    // Disable scanner section for file:// URLs
+    scannerSection.classList.add('disabled');
+    fileUrlWarning.style.display = 'block';
+    setupInstructions.style.display = 'none';
+    authStatus.style.display = 'none';
+    scannerButtons.style.display = 'none';
+  } else {
+    // Enable scanner section for http:// URLs
+    scannerSection.classList.remove('disabled');
+    fileUrlWarning.style.display = 'none';
+    setupInstructions.style.display = 'block';
+    authStatus.style.display = 'inline-flex';
+    scannerButtons.style.display = 'block';
+  }
+}
+
+// Initialize scanner section on page load
+document.addEventListener('DOMContentLoaded', async () => {
+  // Redirect localhost to 127.0.0.1 first
+  if (redirectLocalhostTo127()) {
+    return; // Stop execution, page will redirect
+  }
+
+  // Update scanner section state based on URL
+  updateScannerSectionState();
+
+  // Only proceed with OAuth if not a file:// URL
+  if (!isFileUrl()) {
+    // Update redirect URI display
+    updateRedirectUriDisplay();
+
+    // Handle OAuth callback first
+    await handleOAuthCallback();
+
+    // Check existing auth
+    await checkUserAuth();
+  }
+});
+
+// ==========================================
+// END QR SCANNER & SPOTIFY PLAYBACK SECTION
+// ==========================================
 
 // Form submission handler
 document.getElementById('quizForm').addEventListener('submit', async function(e) {

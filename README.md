@@ -72,6 +72,22 @@ git clone https://github.com/PhilippMatthes/spotify-quiz.git
 open index.html
 ```
 
+### Using Docker
+
+You can also run the app using Docker with nginx:
+
+```bash
+# Build the Docker image
+docker build -t spotify-quiz .
+
+# Run the container on port 8000
+docker run -p 8000:80 spotify-quiz
+```
+
+Then open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
+
+**Note:** When using the QR Scanner feature with Docker, make sure to add `http://127.0.0.1:8000/index.html` as a Redirect URI in your Spotify Developer Dashboard settings.
+
 ## License
 
 MIT License - feel free to use, modify, and distribute.
