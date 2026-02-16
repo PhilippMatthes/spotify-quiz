@@ -1,6 +1,6 @@
 # 🎵 Spotify Quiz Card Generator
 
-Generate printable quiz cards from any Spotify playlist! Perfect for music trivia nights, parties, and games.
+Generate quiz cards from any Spotify playlist!
 
 **[Try it live](https://philippmatthes.github.io/spotify-quiz/)**
 
@@ -34,24 +34,12 @@ Generate printable quiz cards from any Spotify playlist! Perfect for music trivi
 
 Use the cutting marks at the corners of each card to cut them out. The 2mm bleed ensures no white edges even with slight cutting imprecision.
 
-## Color Schemes
+### 5. Use the QR Scanner
 
-| Scheme | Description | Text Color |
-|--------|-------------|------------|
-| **Vibrant** | Bold, saturated colors | White |
-| **Pastel** | Soft, muted colors | Black |
-| **Ocean** | Blues and cyans | White |
-| **Sunset** | Warm oranges and reds | White |
-| **Forest** | Natural greens | White |
-| **Monochrome** | Grayscale | White |
-
-## Technical Details
-
-- Pure HTML/CSS/JavaScript - no build step required
-- Uses [qrcodejs](https://github.com/davidshimjs/qrcodejs) for QR code generation
-- Spotify Web API for playlist data
-- LocalStorage for credential persistence
-- CSS `@page` and `@media print` for print optimization
+1. Configure your Spotify app to callback to the quiz (just follow the instructions on the page)
+2. Open the QR Scanner on your phone
+3. Scan the QR code on the back of each card
+4. Enjoy the quiz!
 
 ## Privacy
 
@@ -99,4 +87,3 @@ Pull requests welcome! Feel free to:
 - Improve print layout
 - Add new features
 - Fix bugs
-

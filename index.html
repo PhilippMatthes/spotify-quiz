@@ -711,6 +711,8 @@
       width: 210mm;
       height: 297mm;
       padding: 15mm;
+      padding-top: 5mm;
+      padding-bottom: 5mm;
       background: white;
       page-break-after: always;
     }
@@ -894,9 +896,14 @@
       }
 
       .card-back .year {
-        color: #fff !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+      }
+
+      .page-instruction {
+        padding: 1mm 0 !important;
+        margin-bottom: 2mm !important;
+        font-size: 8pt !important;
       }
 
       @page {
@@ -1258,39 +1265,49 @@ async function getPlaylistTracks(accessToken, playlistId) {
 
 // Color schemes for cards
 const COLOR_SCHEMES = {
-  vibrant: {
-    name: 'Vibrant',
-    colors: ['#1DB954', '#E91E63', '#9C27B0', '#3F51B5', '#00BCD4', '#FF5722', '#607D8B', '#795548'],
-    darkText: false
-  },
   pastel: {
     name: 'Pastel',
-    colors: ['#B8E6C1', '#F8BBD9', '#E1BEE7', '#C5CAE9', '#B2EBF2', '#FFCCBC', '#CFD8DC', '#D7CCC8'],
+    colors: ['#E8F5E9', '#FCE4EC', '#F3E5F5', '#E8EAF6', '#E0F7FA', '#FFF3E0', '#ECEFF1', '#EFEBE9'],
     darkText: true
   },
-  ocean: {
-    name: 'Ocean',
-    colors: ['#0077B6', '#00B4D8', '#48CAE4', '#90E0EF', '#023E8A', '#0096C7', '#ADE8F4', '#03045E'],
-    darkText: false
+  cream: {
+    name: 'Cream & Ivory',
+    colors: ['#FFFEF0', '#FFF8E7', '#FEFCE8', '#FEF9E7', '#FFFBEB', '#FDF6E3', '#FAF9F6', '#FFFEF5'],
+    darkText: true
   },
-  sunset: {
-    name: 'Sunset',
-    colors: ['#FF6B6B', '#FF8E72', '#FFB347', '#FFCC5C', '#FF6F61', '#E55B3C', '#FF9A76', '#FFA07A'],
-    darkText: false
+  mint: {
+    name: 'Mint & Sage',
+    colors: ['#E8F5E9', '#C8E6C9', '#E0F2E9', '#D7ECD9', '#E5F5E0', '#DCE8DC', '#E8F0E8', '#D4EDDA'],
+    darkText: true
   },
-  forest: {
-    name: 'Forest',
-    colors: ['#2D5A27', '#4A7C49', '#6B9B68', '#8BC489', '#3E7A3E', '#228B22', '#556B2F', '#6B8E23'],
-    darkText: false
+  blush: {
+    name: 'Blush & Rose',
+    colors: ['#FFF0F5', '#FCE4EC', '#FFEEF2', '#FFE4E9', '#FFF0F3', '#FFE8ED', '#FDF2F4', '#FFF5F7'],
+    darkText: true
   },
-  monochrome: {
-    name: 'Monochrome',
-    colors: ['#212121', '#424242', '#616161', '#757575', '#9E9E9E', '#333333', '#555555', '#777777'],
-    darkText: false
+  sky: {
+    name: 'Sky & Cloud',
+    colors: ['#E3F2FD', '#E1F5FE', '#E0F7FA', '#E8EAF6', '#EDE7F6', '#E3E8F0', '#EBF4FA', '#F0F8FF'],
+    darkText: true
+  },
+  warm: {
+    name: 'Warm Sand',
+    colors: ['#FFF8E1', '#FFECB3', '#FFF3E0', '#FFE0B2', '#FFECD2', '#FFE8D4', '#FFF4E6', '#FFEFD5'],
+    darkText: true
+  },
+  lavender: {
+    name: 'Lavender',
+    colors: ['#F3E5F5', '#EDE7F6', '#E8EAF6', '#F5F0FA', '#F0E6F6', '#EBE4F0', '#F8F4FC', '#F3EEF8'],
+    darkText: true
+  },
+  paper: {
+    name: 'Paper White',
+    colors: ['#FAFAFA', '#F5F5F5', '#EEEEEE', '#F8F9FA', '#FFFFFF', '#FCFCFC', '#F9FAFB', '#FEFEFE'],
+    darkText: true
   }
 };
 
-let currentColorScheme = 'vibrant';
+let currentColorScheme = 'pastel';
 
 // Get a random color from the current palette
 function getRandomColor() {
@@ -1326,7 +1343,7 @@ function generateQRCode(text, bgColor, darkText = false, size = 150) {
       text: text,
       width: size,
       height: size,
-      colorDark: darkText ? '#000000' : '#ffffff',
+      colorDark: '#000000', // Always use black for QR code pattern for better scanner compatibility
       colorLight: bgColor,
       correctLevel: QRCode.CorrectLevel.M
     });
@@ -1692,6 +1709,8 @@ const SCOPES = [
 let userAccessToken = null;
 let html5QrCode = null;
 let selectedDeviceId = null;
+let lastScannedCode = null;
+let scanCooldown = false;
 
 // Generate random string for PKCE
 function generateRandomString(length) {
@@ -2091,6 +2110,11 @@ async function closeScannerModal() {
 async function onQrCodeScanned(decodedText) {
   const statusEl = document.getElementById('scannerStatus');
 
+  // Skip if we're in cooldown period (prevents duplicate scans)
+  if (scanCooldown) {
+    return;
+  }
+
   // Check if it's a Spotify URL
   if (!decodedText.includes('spotify.com') && !decodedText.includes('spotify:')) {
     statusEl.className = 'scanner-status warning';
@@ -2106,53 +2130,47 @@ async function onQrCodeScanned(decodedText) {
     return;
   }
 
-  // Stop scanner temporarily
-  if (html5QrCode && html5QrCode.isScanning) {
-    await html5QrCode.stop();
+  // Skip if same code was just scanned (prevents immediate re-scan of same code)
+  if (decodedText === lastScannedCode) {
+    return;
   }
+
+  // Set cooldown to prevent rapid-fire scanning
+  scanCooldown = true;
+  lastScannedCode = decodedText;
 
   statusEl.className = 'scanner-status info';
   statusEl.textContent = 'Playing track...';
 
   try {
-    // Get track info for display
-    const trackId = trackUri.split(':')[2];
-    const trackInfo = await getTrackInfo(trackId);
-
-    // Play the track
+    // Play the track (don't fetch track info to avoid revealing song details)
     await playTrack(trackUri);
 
     statusEl.className = 'scanner-status success';
-    if (trackInfo) {
-      statusEl.textContent = `▶ Now playing: ${trackInfo.name} by ${trackInfo.artists.map(a => a.name).join(', ')}`;
-      updateNowPlaying(trackInfo.name, trackInfo.artists.map(a => a.name).join(', '));
-    } else {
-      statusEl.textContent = '▶ Track is now playing!';
-    }
+    statusEl.textContent = '✓ Song Scanned';
 
-    // Close modal after a delay
+    // Reset cooldown after delay to allow scanning new codes
     setTimeout(() => {
-      closeScannerModal();
+      scanCooldown = false;
+      statusEl.className = 'scanner-status info';
+      statusEl.textContent = 'Point your camera at a Spotify QR code';
     }, 2000);
+
+    // Reset lastScannedCode after a longer delay to allow re-scanning same code
+    setTimeout(() => {
+      lastScannedCode = null;
+    }, 3000);
 
   } catch (error) {
     statusEl.className = 'scanner-status error';
     statusEl.textContent = error.message;
 
-    // Restart scanner after error
-    setTimeout(async () => {
-      try {
-        await html5QrCode.start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          onQrCodeScanned,
-          () => {}
-        );
-        statusEl.className = 'scanner-status info';
-        statusEl.textContent = 'Point your camera at a Spotify QR code';
-      } catch (e) {
-        console.error('Error restarting scanner:', e);
-      }
+    // Reset cooldown after error
+    setTimeout(() => {
+      scanCooldown = false;
+      lastScannedCode = null;
+      statusEl.className = 'scanner-status info';
+      statusEl.textContent = 'Point your camera at a Spotify QR code';
     }, 3000);
   }
 }
