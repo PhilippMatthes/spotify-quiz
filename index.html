@@ -22,8 +22,15 @@
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
 
-  <!-- Theme Color -->
-  <meta name="theme-color" content="#2e7d32">
+  <!-- Theme Color (Safari uses this to tint the navbar/status bar area) -->
+  <meta name="theme-color" content="#e8f5e9">
+  <meta name="theme-color" content="#e8f5e9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#e8f5e9" media="(prefers-color-scheme: dark)">
+
+  <!-- iOS Safari standalone (Add to Home Screen) appearance -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Spotify Quiz">
 
   <!-- QR Code Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -47,11 +54,18 @@
     .form-container {
       max-width: 1000px;
       margin: 0 auto;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+      border: 2px dashed #a5d6a7;
+      border-radius: 16px;
+      padding: 24px;
     }
 
     .form-header {
       text-align: center;
-      margin-bottom: 40px;
+      margin: 0 auto 24px;
+      max-width: 1000px;
+      padding: 0 20px;
     }
 
     .form-header h1 {
@@ -64,6 +78,109 @@
     .form-header p {
       color: #558b59;
       font-size: 16px;
+    }
+
+    .form-section-header {
+      text-align: center;
+      margin: 32px 0 24px;
+    }
+
+    .form-section-header h2 {
+      color: #2e7d32;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .form-section-header p {
+      color: #558b59;
+      font-size: 14px;
+    }
+
+    /* Expandable disclosure (uses native <details>/<summary>) */
+
+    .disclosure > summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .disclosure > summary::-webkit-details-marker { display: none; }
+    .disclosure > summary::marker { content: ''; }
+
+    .disclosure-chevron {
+      display: inline-block;
+      font-size: 14px;
+      line-height: 1;
+      color: #2e7d32;
+      transition: transform 0.2s ease;
+    }
+    .disclosure[open] > summary .disclosure-chevron {
+      transform: rotate(180deg);
+    }
+
+    .disclosure-body {
+      margin-top: 12px;
+    }
+
+    /* "or" divider between major page sections */
+    .section-divider {
+      max-width: 1000px;
+      margin: 28px auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      color: #81c784;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 600;
+    }
+    .section-divider::before,
+    .section-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, #a5d6a7 50%, transparent);
+    }
+    .section-divider span {
+      flex-shrink: 0;
+    }
+
+    .form-disclosure > .disclosure-body {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(46, 125, 50, 0.15);
+    }
+    .form-disclosure > summary {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 4px 4px;
+      border-radius: 12px;
+    }
+    .form-disclosure > summary:hover {
+      background: rgba(46, 125, 50, 0.04);
+    }
+    .form-disclosure > summary .form-section-header {
+      margin: 0;
+      text-align: left;
+      flex: 1;
+    }
+    .form-disclosure > summary .form-section-header h2 {
+      margin-bottom: 4px;
+    }
+    .form-disclosure > summary .form-section-header p {
+      margin: 0;
+    }
+    .form-disclosure > summary .disclosure-chevron {
+      font-size: 22px;
+      flex-shrink: 0;
     }
 
     .step-cards {
@@ -529,7 +646,7 @@
 
     /* Redirect URI Setup Box */
     .setup-instructions {
-      margin: 20px auto 0;
+      margin: 20px auto 28px;
       padding: 20px;
       background: #fff3e0;
       border: 1px solid #ffcc80;
@@ -845,6 +962,12 @@
         display: none !important;
       }
 
+      .form-header,
+      .scanner-section,
+      .section-divider {
+        display: none !important;
+      }
+
       .print-container {
         display: block !important;
         margin: 0 !important;
@@ -1033,139 +1156,159 @@
 </head>
 <body>
 
+<div class="form-header" id="pageHeader">
+  <h1>🎵 Spotify Quiz Cards</h1>
+  <p>Scan a card to play, or generate your own deck below.</p>
+</div>
+
+<!-- QR Scanner Section (moved above the form so it's the first thing visitors see) -->
+<div class="scanner-section" id="scannerSection">
+  <h2>📷 QR Code Scanner</h2>
+  <p>Scan a quiz card QR code to play the song on Spotify, or scan a credentials QR code to connect.</p>
+
+  <div id="authStatus" class="auth-status disconnected">
+    <span class="auth-status-dot"></span>
+    <span id="authStatusText">Not connected to Spotify</span>
+  </div>
+
+  <div id="scannerButtons">
+    <button class="scanner-btn" id="startScannerBtn" onclick="openScannerModal()">
+      📷 Start Scanner
+    </button>
+  </div>
+
+  <!-- File URL Warning (shown when opening directly from filesystem) -->
+  <div class="file-url-warning" id="fileUrlWarning" style="display: none;">
+    <div class="file-url-warning-title">
+      ⚠️ Scanner Not Available
+    </div>
+    <p>
+      The QR scanner cannot work when opening the file directly from your filesystem (<code>file://</code> URLs).
+    </p>
+    <p>
+      Please use Docker to run this app locally. See the <a href="https://github.com/PhilippMatthes/spotify-quiz#using-docker" target="_blank">README</a> for instructions:
+    </p>
+    <p>
+      <code>docker build -t spotify-quiz .</code><br>
+      <code>docker run -p 8000:80 spotify-quiz</code>
+    </p>
+    <p>
+      Then access via <code>http://127.0.0.1:8000</code>
+    </p>
+  </div>
+
+  <div id="nowPlaying" class="now-playing">
+    <div class="now-playing-header">♫ Now Playing</div>
+    <div class="now-playing-track" id="nowPlayingTrack">-</div>
+    <div class="now-playing-artist" id="nowPlayingArtist">-</div>
+  </div>
+</div>
+
+<div class="section-divider" id="sectionDivider" aria-hidden="true">
+  <span>or</span>
+</div>
 <div class="form-container" id="formContainer">
-  <div class="form-header">
-    <h1>🎵 Spotify Quiz Cards</h1>
-    <p>Generate printable quiz cards from any Spotify playlist</p>
-  </div>
+  <details class="disclosure form-disclosure" id="createCardsDisclosure">
+    <summary>
+      <div class="form-section-header">
+        <h2>🎴 Create your own quiz cards</h2>
+        <p>Turn any Spotify playlist into a printable deck of QR-code cards.</p>
+      </div>
+      <span class="disclosure-chevron" aria-hidden="true">▾</span>
+    </summary>
 
-  <div class="error-message" id="errorMessage"></div>
-
-  <form id="quizForm">
-    <div class="step-cards">
-      <div class="step-card">
-        <div class="step-number">1</div>
-        <div class="step-title">Get your Spotify API Credentials</div>
-        <div class="form-group">
-          <label for="clientId">Client ID</label>
-          <input type="password" id="clientId" required placeholder="Enter Client ID">
+    <div class="disclosure-body">
+      <!-- Developer Setup Instructions (host only — needed once when registering the Spotify app) -->
+      <div class="setup-instructions" id="setupInstructions">
+        <div class="setup-instructions-title">
+          ⚙️ One-time developer setup
         </div>
-        <div class="form-group">
-          <label for="clientSecret">Client Secret</label>
-          <input type="password" id="clientSecret" required placeholder="Enter Client Secret">
+        <p>
+          Before generating cards, add this Redirect URI to your
+          <a href="https://developer.spotify.com/dashboard" target="_blank">Spotify Developer Dashboard</a>:
+        </p>
+        <div class="redirect-uri-box">
+          <span class="redirect-uri-text" id="redirectUriText"></span>
+          <button class="copy-btn" id="copyRedirectBtn" onclick="copyRedirectUri()">📋 Copy</button>
         </div>
-        <small style="color: #81c784; font-size: 11px;">
-          Get credentials from <a href="https://developer.spotify.com/dashboard" target="_blank" style="color: #2e7d32;">Spotify Developer Dashboard</a>
-        </small>
+        <ol class="setup-instructions-steps">
+          <li>Go to your app in the Spotify Developer Dashboard</li>
+          <li>Click "Edit Settings"</li>
+          <li>Add the URI above to "Redirect URIs"</li>
+          <li>Click "Save"</li>
+        </ol>
+        <p style="margin-top: 10px; font-size: 11px; color: #bf360c;">
+          <strong>⚠️ Important:</strong> The trailing slash (<code>/</code>) at the end of the URI is required. Make sure to include it exactly as shown.
+        </p>
       </div>
 
-      <div class="step-card">
-        <div class="step-number">2</div>
-        <div class="step-title">Enter your Playlist Link here</div>
-        <div class="form-group">
-          <label for="playlistLink">Playlist URL</label>
-          <input type="text" id="playlistLink" required placeholder="https://open.spotify.com/playlist/...">
-        </div>
-        <div id="playlistPreview" class="playlist-preview" style="display: none;">
-          <div class="playlist-preview-loading">Loading playlist info...</div>
-          <div class="playlist-preview-content" style="display: none;">
-            <div class="playlist-preview-name"></div>
-            <div class="playlist-preview-info"></div>
+      <div class="error-message" id="errorMessage"></div>
+
+      <form id="quizForm">
+        <div class="step-cards">
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <div class="step-title">Get your Spotify API Credentials</div>
+            <div class="form-group">
+              <label for="clientId">Client ID</label>
+              <input type="password" id="clientId" required placeholder="Enter Client ID">
+            </div>
+            <div class="form-group">
+              <label for="clientSecret">Client Secret</label>
+              <input type="password" id="clientSecret" required placeholder="Enter Client Secret">
+            </div>
+            <small style="color: #81c784; font-size: 11px;">
+              Get credentials from <a href="https://developer.spotify.com/dashboard" target="_blank" style="color: #2e7d32;">Spotify Developer Dashboard</a>
+            </small>
+            <button type="button" class="scanner-btn secondary" id="printCredentialsBtn"
+                    onclick="openCredentialsPrintPage()" style="display: none; margin-top: 14px; width: 100%; padding: 10px 16px; font-size: 13px;">
+              🖨️ Print credentials as QR code
+            </button>
+            <button type="button" class="scanner-btn secondary" id="connectSpotifyBtn"
+                    onclick="initiateSpotifyAuth()" style="margin-top: 10px; width: 100%; padding: 10px 16px; font-size: 13px;">
+              🔗 Connect to Spotify
+            </button>
           </div>
-          <div class="playlist-preview-error" style="display: none;"></div>
+
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <div class="step-title">Enter your Playlist Link here</div>
+            <div class="form-group">
+              <label for="playlistLink">Playlist URL</label>
+              <input type="text" id="playlistLink" required placeholder="https://open.spotify.com/playlist/...">
+            </div>
+            <div id="playlistPreview" class="playlist-preview" style="display: none;">
+              <div class="playlist-preview-loading">Loading playlist info...</div>
+              <div class="playlist-preview-content" style="display: none;">
+                <div class="playlist-preview-name"></div>
+                <div class="playlist-preview-info"></div>
+              </div>
+              <div class="playlist-preview-error" style="display: none;"></div>
+            </div>
+            <small style="color: #81c784; font-size: 11px;">
+              Paste any public Spotify playlist link
+            </small>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <div class="step-title">Choose a Color Scheme</div>
+            <div class="color-scheme-picker" id="colorSchemePicker">
+              <!-- Color scheme options will be added by JavaScript -->
+            </div>
+          </div>
         </div>
-        <small style="color: #81c784; font-size: 11px;">
-          Paste any public Spotify playlist link
-        </small>
-      </div>
 
-      <div class="step-card">
-        <div class="step-number">3</div>
-        <div class="step-title">Choose a Color Scheme</div>
-        <div class="color-scheme-picker" id="colorSchemePicker">
-          <!-- Color scheme options will be added by JavaScript -->
+        <div class="submit-container">
+          <button type="submit" class="submit-btn" id="submitBtn">Generate Quiz Cards</button>
         </div>
-      </div>
-    </div>
+      </form>
 
-    <div class="submit-container">
-      <button type="submit" class="submit-btn" id="submitBtn">Generate Quiz Cards</button>
-    </div>
-  </form>
-
-  <p class="privacy-notice">
-    🔒 Your credentials are saved locally in your browser and never sent to any server.
-  </p>
-
-  <!-- QR Scanner Section -->
-  <div class="scanner-section" id="scannerSection">
-    <h2>📷 QR Code Scanner</h2>
-    <p>Scan a quiz card QR code to play the song on Spotify</p>
-
-    <div id="authStatus" class="auth-status disconnected">
-      <span class="auth-status-dot"></span>
-      <span id="authStatusText">Not connected to Spotify</span>
-    </div>
-
-    <div id="scannerButtons">
-      <button class="scanner-btn" id="connectSpotifyBtn" onclick="initiateSpotifyAuth()">
-        🔗 Connect to Spotify
-      </button>
-      <button class="scanner-btn secondary" id="startScannerBtn" onclick="openScannerModal()" style="display: none;">
-        📷 Start Scanner
-      </button>
-    </div>
-
-    <!-- File URL Warning (shown when opening directly from filesystem) -->
-    <div class="file-url-warning" id="fileUrlWarning" style="display: none;">
-      <div class="file-url-warning-title">
-        ⚠️ Scanner Not Available
-      </div>
-      <p>
-        The QR scanner cannot work when opening the file directly from your filesystem (<code>file://</code> URLs).
-      </p>
-      <p>
-        Please use Docker to run this app locally. See the <a href="https://github.com/PhilippMatthes/spotify-quiz#using-docker" target="_blank">README</a> for instructions:
-      </p>
-      <p>
-        <code>docker build -t spotify-quiz .</code><br>
-        <code>docker run -p 8000:80 spotify-quiz</code>
-      </p>
-      <p>
-        Then access via <code>http://127.0.0.1:8000</code>
+      <p class="privacy-notice">
+        🔒 Your credentials are saved locally in your browser and never sent to any server.
       </p>
     </div>
-
-    <!-- Setup Instructions -->
-    <div class="setup-instructions" id="setupInstructions">
-      <div class="setup-instructions-title">
-        ⚙️ Setup Required
-      </div>
-      <p>
-        To use the scanner, add this Redirect URI to your
-        <a href="https://developer.spotify.com/dashboard" target="_blank">Spotify Developer Dashboard</a>:
-      </p>
-      <div class="redirect-uri-box">
-        <span class="redirect-uri-text" id="redirectUriText"></span>
-        <button class="copy-btn" id="copyRedirectBtn" onclick="copyRedirectUri()">📋 Copy</button>
-      </div>
-      <ol class="setup-instructions-steps">
-        <li>Go to your app in the Spotify Developer Dashboard</li>
-        <li>Click "Edit Settings"</li>
-        <li>Add the URI above to "Redirect URIs"</li>
-        <li>Click "Save"</li>
-      </ol>
-      <p style="margin-top: 10px; font-size: 11px; color: #bf360c;">
-        <strong>⚠️ Important:</strong> The trailing slash (<code>/</code>) at the end of the URI is required. Make sure to include it exactly as shown.
-      </p>
-    </div>
-
-    <div id="nowPlaying" class="now-playing">
-      <div class="now-playing-header">♫ Now Playing</div>
-      <div class="now-playing-track" id="nowPlayingTrack">-</div>
-      <div class="now-playing-artist" id="nowPlayingArtist">-</div>
-    </div>
-  </div>
+  </details>
 </div>
 
 <!-- Scanner Modal -->
@@ -1361,6 +1504,174 @@ function generateQRCode(text, bgColor, darkText = false, size = 150) {
   });
 }
 
+// Credentials QR payload helpers
+const CREDENTIALS_QR_PREFIX = 'spotify-quiz-credentials:';
+
+function encodeCredentialsPayload(clientId, clientSecret) {
+  const json = JSON.stringify({ clientId: clientId, clientSecret: clientSecret });
+  return CREDENTIALS_QR_PREFIX + btoa(json);
+}
+
+function decodeCredentialsPayload(text) {
+  if (typeof text !== 'string' || !text.startsWith(CREDENTIALS_QR_PREFIX)) return null;
+  try {
+    const json = atob(text.slice(CREDENTIALS_QR_PREFIX.length));
+    const obj = JSON.parse(json);
+    if (obj && typeof obj.clientId === 'string' && typeof obj.clientSecret === 'string') {
+      return obj;
+    }
+  } catch (e) {}
+  return null;
+}
+
+// Open a printable A4 page with a credentials QR code
+async function openCredentialsPrintPage() {
+  const clientId = document.getElementById('clientId').value.trim();
+  const clientSecret = document.getElementById('clientSecret').value.trim();
+
+  if (!clientId || !clientSecret) {
+    showError('Please enter both Client ID and Client Secret before printing.');
+    return;
+  }
+
+  const payload = encodeCredentialsPayload(clientId, clientSecret);
+  const qrDataUrl = await generateQRCode(payload, '#ffffff', false, 600);
+  const siteUrl = window.location.origin + window.location.pathname;
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    showError('Could not open print window. Please allow popups for this site.');
+    return;
+  }
+
+  const escape = (s) => String(s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+
+  printWindow.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spotify Quiz - Credentials QR Code</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    color: #1b3a1f;
+    background: #fff;
+  }
+  .sheet {
+    width: 100%;
+    min-height: 100vh;
+    padding: 20mm 15mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  h1 {
+    font-size: 28pt;
+    color: #2e7d32;
+    margin: 0 0 4mm 0;
+  }
+  .subtitle {
+    font-size: 13pt;
+    color: #558b59;
+    margin: 0 0 14mm 0;
+  }
+  .qr-wrap {
+    border: 2px solid #2e7d32;
+    border-radius: 8mm;
+    padding: 8mm;
+    background: #fff;
+    margin-bottom: 12mm;
+  }
+  .qr-wrap img {
+    display: block;
+    width: 110mm;
+    height: 110mm;
+  }
+  .url-block {
+    font-size: 14pt;
+    background: #f1f8f4;
+    border: 1px dashed #a5d6a7;
+    border-radius: 6mm;
+    padding: 6mm 10mm;
+    margin-bottom: 12mm;
+    word-break: break-all;
+  }
+  .url-block .label {
+    display: block;
+    font-size: 10pt;
+    color: #558b59;
+    margin-bottom: 2mm;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .url-block .url {
+    font-weight: 600;
+    color: #2e7d32;
+  }
+  ol.steps {
+    text-align: left;
+    font-size: 14pt;
+    line-height: 1.6;
+    max-width: 130mm;
+    margin: 0 0 12mm 0;
+    padding-left: 8mm;
+  }
+  ol.steps li { margin-bottom: 3mm; }
+  .warning {
+    font-size: 11pt;
+    color: #b71c1c;
+    background: #ffebee;
+    border: 1px solid #ffcdd2;
+    border-radius: 4mm;
+    padding: 5mm 8mm;
+    max-width: 150mm;
+  }
+  @media print {
+    .sheet { padding: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <h1>🎵 Spotify Quiz Credentials</h1>
+    <p class="subtitle">Scan this code in the quiz app to connect to Spotify automatically.</p>
+
+    <div class="qr-wrap">
+      <img src="${qrDataUrl}" alt="Credentials QR code">
+    </div>
+
+    <div class="url-block">
+      <span class="label">Open this site first</span>
+      <span class="url">${escape(siteUrl)}</span>
+    </div>
+
+    <ol class="steps">
+      <li>Open the URL above on your phone or tablet.</li>
+      <li>Tap <strong>Start Scanner</strong>.</li>
+      <li>Point the camera at this QR code &mdash; credentials load and Spotify sign-in starts automatically.</li>
+    </ol>
+
+    <div class="warning">
+      ⚠️ Keep this page private. Anyone who scans this code can use your Spotify API credentials.
+    </div>
+  </div>
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () { window.print(); }, 300);
+    });
+  <\/script>
+</body>
+</html>`);
+  printWindow.document.close();
+}
+
 // Create a page of cards (9 cards)
 function createCardsPage(cards, isFront) {
   const page = document.createElement('div');
@@ -1471,6 +1782,9 @@ async function generatePrintPages(tracks) {
   backBtn.textContent = '← Back';
   backBtn.onclick = () => {
     document.getElementById('formContainer').style.display = 'block';
+    document.getElementById('scannerSection').style.display = '';
+    document.getElementById('pageHeader').style.display = '';
+    document.getElementById('sectionDivider').style.display = '';
     document.getElementById('printContainer').style.display = 'none';
   };
   btnGroup.appendChild(backBtn);
@@ -1678,7 +1992,22 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('playlistLink').addEventListener('paste', () => {
     setTimeout(handlePlaylistInput, 100);
   });
+
+  // Toggle "Print credentials as QR code" button when both credential fields have values
+  const clientIdEl = document.getElementById('clientId');
+  const clientSecretEl = document.getElementById('clientSecret');
+  clientIdEl.addEventListener('input', togglePrintCredentialsBtn);
+  clientSecretEl.addEventListener('input', togglePrintCredentialsBtn);
+  togglePrintCredentialsBtn();
 });
+
+function togglePrintCredentialsBtn() {
+  const btn = document.getElementById('printCredentialsBtn');
+  if (!btn) return;
+  const id = (document.getElementById('clientId').value || '').trim();
+  const secret = (document.getElementById('clientSecret').value || '').trim();
+  btn.style.display = (id && secret) ? '' : 'none';
+}
 
 // ==========================================
 // QR SCANNER & SPOTIFY PLAYBACK SECTION
@@ -1911,7 +2240,8 @@ function updateAuthStatus(isConnected) {
     statusTextEl.textContent = 'Not connected to Spotify';
     connectBtn.textContent = '🔗 Connect to Spotify';
     connectBtn.disabled = false;
-    scannerBtn.style.display = 'none';
+    // Keep scanner visible even without auth so a credentials QR can be scanned
+    scannerBtn.style.display = 'inline-block';
   }
 }
 
@@ -2060,17 +2390,50 @@ async function openScannerModal() {
   const modal = document.getElementById('scannerModal');
   modal.classList.add('active');
 
-  // Update device selector
-  await updateDeviceSelector();
-
-  // Initialize QR scanner
-  if (!html5QrCode) {
-    html5QrCode = new Html5Qrcode('qr-reader');
-  }
-
   const statusEl = document.getElementById('scannerStatus');
   statusEl.className = 'scanner-status info';
   statusEl.textContent = 'Starting camera...';
+
+  // Insecure origins (anything that isn't https or localhost) silently block
+  // getUserMedia on iOS Safari with no permission prompt. Surface that early.
+  if (!window.isSecureContext) {
+    statusEl.className = 'scanner-status error';
+    statusEl.innerHTML = 'Camera blocked: this page must be loaded over <strong>https</strong> or <strong>localhost</strong>. ' +
+      'Current origin: <code>' + location.origin + '</code>';
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    statusEl.className = 'scanner-status error';
+    statusEl.textContent = 'This browser does not support camera access.';
+    return;
+  }
+
+  // Trigger the permission prompt directly inside the user-gesture chain.
+  // html5-qrcode's start() does this internally too, but pre-warming here
+  // surfaces the real DOMException name (NotAllowedError, NotFoundError,
+  // SecurityError, etc.) so we can show a useful message on iOS Safari.
+  let warmupStream;
+  try {
+    warmupStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false
+    });
+  } catch (error) {
+    console.error('Camera permission error:', error);
+    statusEl.className = 'scanner-status error';
+    statusEl.textContent = describeCameraError(error);
+    return;
+  } finally {
+    // We don't keep this stream — html5-qrcode will open its own.
+    if (warmupStream) {
+      warmupStream.getTracks().forEach(t => t.stop());
+    }
+  }
+
+  if (!html5QrCode) {
+    html5QrCode = new Html5Qrcode('qr-reader');
+  }
 
   try {
     await html5QrCode.start(
@@ -2084,11 +2447,48 @@ async function openScannerModal() {
         // Ignore scan errors (no QR code found in frame)
       }
     );
-    statusEl.textContent = 'Point your camera at a Spotify QR code';
+    statusEl.className = 'scanner-status info';
+    statusEl.textContent = userAccessToken
+      ? 'Point your camera at a Spotify QR code'
+      : 'Not connected yet — scan a credentials QR code to connect to Spotify';
   } catch (error) {
-    console.error('Camera error:', error);
+    console.error('Scanner start error:', error);
     statusEl.className = 'scanner-status error';
-    statusEl.textContent = 'Could not access camera. Please allow camera permissions.';
+    statusEl.textContent = 'Camera was allowed but the scanner failed to start: ' +
+      (error && error.message ? error.message : String(error));
+    return;
+  }
+
+  // Now that the camera is running, update the device selector. Only meaningful
+  // once we have a Spotify access token; otherwise the call would 401.
+  if (userAccessToken) {
+    updateDeviceSelector();
+  } else {
+    document.getElementById('deviceSelectContainer').style.display = 'none';
+  }
+}
+
+function describeCameraError(error) {
+  const name = error && error.name;
+  switch (name) {
+    case 'NotAllowedError':
+    case 'PermissionDeniedError':
+      return 'Camera permission was denied. On iOS: Settings → Safari → Camera → set this site to "Ask" or "Allow", then reload.';
+    case 'NotFoundError':
+    case 'DevicesNotFoundError':
+      return 'No camera found on this device.';
+    case 'NotReadableError':
+    case 'TrackStartError':
+      return 'The camera is in use by another app. Close other apps using the camera and try again.';
+    case 'OverconstrainedError':
+    case 'ConstraintNotSatisfiedError':
+      return 'No camera matches the requested settings (rear camera).';
+    case 'SecurityError':
+      return 'Camera blocked for security reasons. The page must be served over https.';
+    case 'AbortError':
+      return 'Camera request was aborted. Try again.';
+    default:
+      return 'Could not access camera: ' + (name || (error && error.message) || 'unknown error');
   }
 }
 
@@ -2112,6 +2512,33 @@ async function onQrCodeScanned(decodedText) {
 
   // Skip if we're in cooldown period (prevents duplicate scans)
   if (scanCooldown) {
+    return;
+  }
+
+  // Check first whether this is a credentials QR (printed by openCredentialsPrintPage)
+  const creds = decodeCredentialsPayload(decodedText);
+  if (creds) {
+    scanCooldown = true;
+    lastScannedCode = decodedText;
+    statusEl.className = 'scanner-status success';
+    statusEl.textContent = '✓ Credentials loaded — connecting to Spotify…';
+
+    saveCredentials(creds.clientId, creds.clientSecret);
+    document.getElementById('clientId').value = creds.clientId;
+    document.getElementById('clientSecret').value = creds.clientSecret;
+    togglePrintCredentialsBtn();
+
+    closeScannerModal();
+    // Defer slightly so the modal close transition doesn't fight the OAuth redirect
+    setTimeout(() => {
+      try {
+        initiateSpotifyAuth();
+      } catch (e) {
+        showError(e.message || 'Failed to start Spotify sign-in.');
+        scanCooldown = false;
+        lastScannedCode = null;
+      }
+    }, 200);
     return;
   }
 
@@ -2153,7 +2580,9 @@ async function onQrCodeScanned(decodedText) {
     setTimeout(() => {
       scanCooldown = false;
       statusEl.className = 'scanner-status info';
-      statusEl.textContent = 'Point your camera at a Spotify QR code';
+      statusEl.textContent = userAccessToken
+      ? 'Point your camera at a Spotify QR code'
+      : 'Not connected yet — scan a credentials QR code to connect to Spotify';
     }, 2000);
 
     // Reset lastScannedCode after a longer delay to allow re-scanning same code
@@ -2170,7 +2599,9 @@ async function onQrCodeScanned(decodedText) {
       scanCooldown = false;
       lastScannedCode = null;
       statusEl.className = 'scanner-status info';
-      statusEl.textContent = 'Point your camera at a Spotify QR code';
+      statusEl.textContent = userAccessToken
+      ? 'Point your camera at a Spotify QR code'
+      : 'Not connected yet — scan a credentials QR code to connect to Spotify';
     }, 3000);
   }
 }
@@ -2352,6 +2783,9 @@ document.getElementById('quizForm').addEventListener('submit', async function(e)
 
     // Show print preview
     document.getElementById('formContainer').style.display = 'none';
+    document.getElementById('scannerSection').style.display = 'none';
+    document.getElementById('pageHeader').style.display = 'none';
+    document.getElementById('sectionDivider').style.display = 'none';
     document.getElementById('printContainer').style.display = 'block';
 
   } catch (error) {
