@@ -1175,6 +1175,9 @@
     <button class="scanner-btn" id="startScannerBtn" onclick="openScannerModal()">
       📷 Start Scanner
     </button>
+    <button class="scanner-btn secondary" id="switchAccountBtn" onclick="switchSpotifyAccount()" style="display: none;">
+      🔄 Switch account
+    </button>
   </div>
 
   <!-- File URL Warning (shown when opening directly from filesystem) -->
@@ -2068,7 +2071,7 @@ async function generateCodeChallenge(verifier) {
 }
 
 // Initiate Spotify OAuth flow with PKCE
-async function initiateSpotifyAuth() {
+async function initiateSpotifyAuth(forceDialog = false) {
   const clientId = document.getElementById('clientId').value.trim();
   const clientSecret = document.getElementById('clientSecret').value.trim();
 
@@ -2105,8 +2108,38 @@ async function initiateSpotifyAuth() {
     code_challenge: codeChallenge
   });
 
+  // Force the Spotify approval dialog so the user can pick a different account
+  if (forceDialog) {
+    params.set('show_dialog', 'true');
+  }
+
   // Redirect to Spotify authorization
   window.location.href = `${SPOTIFY_AUTH_ENDPOINT}?${params.toString()}`;
+}
+
+// Sign out of the current Spotify account and re-prompt for login.
+// Spotify keeps its own session cookie, so simply clearing our tokens isn't
+// enough — we also pass show_dialog=true so the consent/account screen is
+// shown even when the browser is still signed in to spotify.com.
+async function switchSpotifyAccount() {
+  // Clear our own auth state
+  userAccessToken = null;
+  selectedDeviceId = null;
+  localStorage.removeItem('spotify_user_access_token');
+  localStorage.removeItem('spotify_refresh_token');
+  localStorage.removeItem('spotify_token_expiry');
+  localStorage.removeItem('spotify_code_verifier');
+  localStorage.removeItem('spotify_auth_state');
+  // Keep spotify_auth_client_id / saved client credentials so the user
+  // doesn't have to re-enter them — only the Spotify *user* changes.
+
+  updateAuthStatus(false);
+
+  // Hide "now playing" since it belonged to the previous account
+  const nowPlayingEl = document.getElementById('nowPlaying');
+  if (nowPlayingEl) nowPlayingEl.classList.remove('active');
+
+  await initiateSpotifyAuth(true);
 }
 
 // Exchange authorization code for access token
@@ -2228,6 +2261,7 @@ function updateAuthStatus(isConnected) {
   const statusTextEl = document.getElementById('authStatusText');
   const connectBtn = document.getElementById('connectSpotifyBtn');
   const scannerBtn = document.getElementById('startScannerBtn');
+  const switchAccountBtn = document.getElementById('switchAccountBtn');
 
   if (isConnected) {
     statusEl.className = 'auth-status connected';
@@ -2235,6 +2269,7 @@ function updateAuthStatus(isConnected) {
     connectBtn.textContent = '✓ Connected';
     connectBtn.disabled = true;
     scannerBtn.style.display = 'inline-block';
+    if (switchAccountBtn) switchAccountBtn.style.display = 'inline-block';
   } else {
     statusEl.className = 'auth-status disconnected';
     statusTextEl.textContent = 'Not connected to Spotify';
@@ -2242,6 +2277,7 @@ function updateAuthStatus(isConnected) {
     connectBtn.disabled = false;
     // Keep scanner visible even without auth so a credentials QR can be scanned
     scannerBtn.style.display = 'inline-block';
+    if (switchAccountBtn) switchAccountBtn.style.display = 'none';
   }
 }
 
