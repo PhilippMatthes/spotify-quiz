@@ -2132,6 +2132,7 @@ async function switchSpotifyAccount() {
   localStorage.removeItem('spotify_user_access_token');
   localStorage.removeItem('spotify_refresh_token');
   localStorage.removeItem('spotify_token_expiry');
+  localStorage.removeItem('spotify_token_scope');
   localStorage.removeItem('spotify_code_verifier');
   localStorage.removeItem('spotify_auth_state');
   // Keep spotify_auth_client_id / saved client credentials so the user
@@ -2208,6 +2209,14 @@ async function exchangeCodeForToken(code) {
   localStorage.setItem('spotify_user_access_token', data.access_token);
   localStorage.setItem('spotify_token_expiry', Date.now() + (data.expires_in * 1000));
 
+  // Persist the *granted* scope string so we can detect tokens that were
+  // issued before user-read-playback-state was added to SCOPES. Such tokens
+  // make /me/player/devices return 200 with an empty array — silently — so
+  // without this we can't tell that case apart from "no devices online".
+  if (data.scope) {
+    localStorage.setItem('spotify_token_scope', data.scope);
+  }
+
   if (data.refresh_token) {
     localStorage.setItem('spotify_refresh_token', data.refresh_token);
   }
@@ -2249,6 +2258,12 @@ async function refreshAccessToken() {
     userAccessToken = data.access_token;
     localStorage.setItem('spotify_user_access_token', data.access_token);
     localStorage.setItem('spotify_token_expiry', Date.now() + (data.expires_in * 1000));
+
+    // Refresh responses include the scope of the new token; mirror what
+    // exchangeCodeForToken does so the local view stays in sync.
+    if (data.scope) {
+      localStorage.setItem('spotify_token_scope', data.scope);
+    }
 
     if (data.refresh_token) {
       localStorage.setItem('spotify_refresh_token', data.refresh_token);
@@ -2312,29 +2327,47 @@ function updateAuthStatus(isConnected) {
   }
 }
 
-// Get available Spotify devices
+// Get available Spotify devices.
+//
+// Returns { devices, playbackState, error } so the UI can distinguish
+// "API call failed" from "API succeeded but Spotify Connect sees nothing".
+// We also fetch /me/player in parallel — its presence proves the user is
+// actively playing somewhere; if devices comes back empty while /me/player
+// shows playback, the token is almost certainly missing user-read-playback-state
+// (the scope filter on /devices fails open with [], not 403).
 async function getAvailableDevices() {
-  if (!userAccessToken) return [];
+  if (!userAccessToken) return { devices: [], playbackState: null, error: null };
+
+  const auth = { headers: { 'Authorization': 'Bearer ' + userAccessToken } };
 
   try {
-    const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
-      headers: {
-        'Authorization': 'Bearer ' + userAccessToken
-      }
-    });
+    const [devicesRes, playerRes] = await Promise.all([
+      fetch('https://api.spotify.com/v1/me/player/devices', auth),
+      // /me/player returns 204 No Content when nothing is playing — that's
+      // fine, we only care about the body when it's a 200.
+      fetch('https://api.spotify.com/v1/me/player', auth).catch(() => null)
+    ]);
 
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      console.error(`Devices fetch failed: ${response.status} ${response.statusText}`, body);
-      throw new Error(`Failed to fetch devices (HTTP ${response.status})`);
+    if (!devicesRes.ok) {
+      const body = await devicesRes.text().catch(() => '');
+      console.error(`Devices fetch failed: ${devicesRes.status} ${devicesRes.statusText}`, body);
+      return {
+        devices: [],
+        playbackState: null,
+        error: `HTTP ${devicesRes.status}: ${body || devicesRes.statusText}`
+      };
     }
 
-    const data = await response.json();
-    console.log('🎧 Spotify Connect devices:', data);
-    return data.devices || [];
+    const data = await devicesRes.json();
+    let playbackState = null;
+    if (playerRes && playerRes.status === 200) {
+      playbackState = await playerRes.json().catch(() => null);
+    }
+    console.log('🎧 Spotify Connect devices:', data, 'playback state:', playbackState);
+    return { devices: data.devices || [], playbackState, error: null };
   } catch (error) {
     console.error('Error fetching devices:', error);
-    return [];
+    return { devices: [], playbackState: null, error: error.message || String(error) };
   }
 }
 
@@ -2345,7 +2378,7 @@ let deviceRefreshInterval = null;
 
 // Update device selector
 async function updateDeviceSelector() {
-  const devices = await getAvailableDevices();
+  const { devices, playbackState, error } = await getAvailableDevices();
   const selectEl = document.getElementById('deviceSelect');
   const containerEl = document.getElementById('deviceSelectContainer');
   const noDevicesEl = document.getElementById('noDevicesMessage');
@@ -2358,15 +2391,8 @@ async function updateDeviceSelector() {
 
   if (devices.length === 0) {
     noDevicesEl.style.display = 'block';
-    noDevicesEl.innerHTML =
-      'No Spotify Connect devices visible yet. ' +
-      'Open the Spotify app on your phone or computer and press play once — ' +
-      'Bluetooth speakers don\'t appear directly; the device sending audio to them does. ' +
-      '<a href="#" id="refreshDevicesLink" style="color:#2e7d32;font-weight:600;">Refresh</a>';
-    const refreshLink = document.getElementById('refreshDevicesLink');
-    if (refreshLink) {
-      refreshLink.onclick = (e) => { e.preventDefault(); updateDeviceSelector(); };
-    }
+    noDevicesEl.innerHTML = buildNoDevicesMessage({ playbackState, error });
+    wireNoDevicesActions();
     return;
   }
 
@@ -2392,6 +2418,67 @@ async function updateDeviceSelector() {
   selectEl.onchange = (e) => {
     selectedDeviceId = e.target.value;
   };
+}
+
+// Build a diagnostic message for the empty-devices state.
+//
+// "Spotify is playing on my phone but no device shows up" almost always
+// means one of:
+//   1. The token was issued before user-read-playback-state was in SCOPES.
+//      /me/player/devices then returns 200 with []. Fix: re-authorize.
+//   2. The user authenticated with a *different* Spotify account than the
+//      one that's playing music. Fix: switch account.
+//   3. The Spotify app on the source device hasn't checked in with Spotify
+//      Connect since it was last backgrounded. Fix: open the app, hit play.
+// We can disambiguate (1) by checking the stored scope, and (2) by checking
+// /me/player — if it shows active playback, devices should never be [].
+function buildNoDevicesMessage({ playbackState, error }) {
+  const grantedScope = localStorage.getItem('spotify_token_scope') || '';
+  const hasReadScope = grantedScope.split(/\s+/).includes('user-read-playback-state');
+
+  if (error) {
+    return `Couldn't reach Spotify: <code>${escapeHtml(error)}</code>. ` +
+      '<a href="#" id="refreshDevicesLink" style="color:#2e7d32;font-weight:600;">Retry</a>';
+  }
+
+  // Stored scope says the token can't see devices. Definitive — re-auth fixes it.
+  if (grantedScope && !hasReadScope) {
+    return 'Your Spotify token is missing the <code>user-read-playback-state</code> permission, ' +
+      'so devices can never appear. This happens when you connected before the app needed that permission. ' +
+      '<a href="#" id="reauthDevicesLink" style="color:#2e7d32;font-weight:600;">Reconnect to Spotify</a> to fix it.';
+  }
+
+  // /me/player says playback is active, but /devices returned nothing — the
+  // two endpoints disagree. The most common cause is a different account.
+  if (playbackState && playbackState.device) {
+    const playingOn = playbackState.device.name || 'another device';
+    return `Spotify says music is playing on <strong>${escapeHtml(playingOn)}</strong>, but it doesn't ` +
+      "appear in this account's device list. You probably connected with a different Spotify account than " +
+      'the one playing music. ' +
+      '<a href="#" id="switchAccountDevicesLink" style="color:#2e7d32;font-weight:600;">Switch account</a> ' +
+      'or <a href="#" id="refreshDevicesLink" style="color:#2e7d32;font-weight:600;">refresh</a>.';
+  }
+
+  // Nothing playing anywhere — standard onboarding message.
+  return 'No Spotify Connect devices visible yet. ' +
+    'Open the Spotify app on your phone or computer and press play once — ' +
+    "Bluetooth speakers don't appear directly; the device sending audio to them does. " +
+    '<a href="#" id="refreshDevicesLink" style="color:#2e7d32;font-weight:600;">Refresh</a>';
+}
+
+function wireNoDevicesActions() {
+  const refreshLink = document.getElementById('refreshDevicesLink');
+  if (refreshLink) {
+    refreshLink.onclick = (e) => { e.preventDefault(); updateDeviceSelector(); };
+  }
+  const reauthLink = document.getElementById('reauthDevicesLink');
+  if (reauthLink) {
+    reauthLink.onclick = (e) => { e.preventDefault(); switchSpotifyAccount(); };
+  }
+  const switchLink = document.getElementById('switchAccountDevicesLink');
+  if (switchLink) {
+    switchLink.onclick = (e) => { e.preventDefault(); switchSpotifyAccount(); };
+  }
 }
 
 function startDevicePolling() {
