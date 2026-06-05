@@ -2324,16 +2324,24 @@ async function getAvailableDevices() {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch devices');
+      const body = await response.text().catch(() => '');
+      console.error(`Devices fetch failed: ${response.status} ${response.statusText}`, body);
+      throw new Error(`Failed to fetch devices (HTTP ${response.status})`);
     }
 
     const data = await response.json();
+    console.log('🎧 Spotify Connect devices:', data);
     return data.devices || [];
   } catch (error) {
     console.error('Error fetching devices:', error);
     return [];
   }
 }
+
+// Poll the devices endpoint while the scanner modal is open. Devices appear
+// and disappear from Spotify Connect as apps wake/sleep, so a one-shot fetch
+// often misses the phone that's actively streaming.
+let deviceRefreshInterval = null;
 
 // Update device selector
 async function updateDeviceSelector() {
@@ -2343,22 +2351,40 @@ async function updateDeviceSelector() {
   const noDevicesEl = document.getElementById('noDevicesMessage');
 
   containerEl.style.display = 'block';
+
+  // Preserve the user's current selection across refreshes
+  const previousSelection = selectEl.value || selectedDeviceId || '';
   selectEl.innerHTML = '<option value="">Select a device...</option>';
 
   if (devices.length === 0) {
     noDevicesEl.style.display = 'block';
+    noDevicesEl.innerHTML =
+      'No Spotify Connect devices visible yet. ' +
+      'Open the Spotify app on your phone or computer and press play once — ' +
+      'Bluetooth speakers don\'t appear directly; the device sending audio to them does. ' +
+      '<a href="#" id="refreshDevicesLink" style="color:#2e7d32;font-weight:600;">Refresh</a>';
+    const refreshLink = document.getElementById('refreshDevicesLink');
+    if (refreshLink) {
+      refreshLink.onclick = (e) => { e.preventDefault(); updateDeviceSelector(); };
+    }
     return;
   }
 
   noDevicesEl.style.display = 'none';
 
+  let restored = false;
   devices.forEach(device => {
     const option = document.createElement('option');
     option.value = device.id;
     option.textContent = `${device.name} (${device.type})${device.is_active ? ' - Active' : ''}`;
-    if (device.is_active) {
+    if (device.id === previousSelection) {
       option.selected = true;
       selectedDeviceId = device.id;
+      restored = true;
+    } else if (!restored && !previousSelection && device.is_active) {
+      option.selected = true;
+      selectedDeviceId = device.id;
+      restored = true;
     }
     selectEl.appendChild(option);
   });
@@ -2366,6 +2392,21 @@ async function updateDeviceSelector() {
   selectEl.onchange = (e) => {
     selectedDeviceId = e.target.value;
   };
+}
+
+function startDevicePolling() {
+  if (deviceRefreshInterval) return;
+  // First refresh is immediate (caller already did it); poll every 3s after
+  deviceRefreshInterval = setInterval(() => {
+    updateDeviceSelector().catch(err => console.error('Device poll error:', err));
+  }, 3000);
+}
+
+function stopDevicePolling() {
+  if (deviceRefreshInterval) {
+    clearInterval(deviceRefreshInterval);
+    deviceRefreshInterval = null;
+  }
 }
 
 // Extract track URI from Spotify URL
@@ -2530,6 +2571,7 @@ async function openScannerModal() {
   // once we have a Spotify access token; otherwise the call would 401.
   if (userAccessToken) {
     updateDeviceSelector();
+    startDevicePolling();
   } else {
     document.getElementById('deviceSelectContainer').style.display = 'none';
   }
@@ -2563,6 +2605,8 @@ function describeCameraError(error) {
 async function closeScannerModal() {
   const modal = document.getElementById('scannerModal');
   modal.classList.remove('active');
+
+  stopDevicePolling();
 
   if (html5QrCode && html5QrCode.isScanning) {
     try {
