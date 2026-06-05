@@ -2118,9 +2118,13 @@ async function initiateSpotifyAuth(forceDialog = false) {
 }
 
 // Sign out of the current Spotify account and re-prompt for login.
-// Spotify keeps its own session cookie, so simply clearing our tokens isn't
-// enough — we also pass show_dialog=true so the consent/account screen is
-// shown even when the browser is still signed in to spotify.com.
+//
+// Spotify keeps its own session cookie at accounts.spotify.com, and
+// show_dialog=true on /authorize only re-prompts for *consent* — the
+// already-signed-in account is still picked automatically. To actually let
+// the user choose a different account we first hit the (undocumented but
+// stable) /logout endpoint inside a hidden iframe to clear that cookie,
+// then redirect to /authorize with show_dialog=true.
 async function switchSpotifyAccount() {
   // Clear our own auth state
   userAccessToken = null;
@@ -2138,6 +2142,33 @@ async function switchSpotifyAccount() {
   // Hide "now playing" since it belonged to the previous account
   const nowPlayingEl = document.getElementById('nowPlaying');
   if (nowPlayingEl) nowPlayingEl.classList.remove('active');
+
+  // Clear Spotify's session cookie via a hidden iframe. We can't observe the
+  // cross-origin response, so just give it a short window to complete before
+  // redirecting. Failing safe: if the cookie wasn't cleared, show_dialog=true
+  // still lets the user click "Not you?" on the consent screen.
+  await new Promise((resolve) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = 'https://accounts.spotify.com/en/logout';
+
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      try { iframe.remove(); } catch (e) {}
+      resolve();
+    };
+
+    iframe.addEventListener('load', () => {
+      // Give the browser a beat to actually persist the Set-Cookie before navigating away
+      setTimeout(finish, 300);
+    });
+    // Hard cap so a slow / blocked logout doesn't strand us here
+    setTimeout(finish, 2000);
+
+    document.body.appendChild(iframe);
+  });
 
   await initiateSpotifyAuth(true);
 }
